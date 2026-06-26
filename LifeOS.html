@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="theme-color" content="#6366f1"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="LifeOS"/>
+  <title>LifeOS</title>
+  <link id="manifest-link" rel="manifest"/>
+  <link rel="apple-touch-icon" id="apple-icon"/>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{height:100%;background:#0a0a0f;overflow-x:hidden}
+    #root{height:100%}
+    body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+    ::-webkit-scrollbar{display:none}
+    button{-webkit-user-select:none;user-select:none}
+    #loading{position:fixed;inset:0;background:#0a0a0f;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity 0.5s}
+    #loading .logo{font-size:52px;margin-bottom:16px;animation:pls 2s infinite}
+    #loading .name{font-family:-apple-system,sans-serif;color:#818cf8;font-size:30px;font-weight:700;letter-spacing:3px}
+    #loading .sub{font-family:-apple-system,sans-serif;color:rgba(255,255,255,0.3);font-size:13px;margin-top:8px}
+    #loading .bar-wrap{width:160px;height:3px;background:rgba(255,255,255,0.1);border-radius:2px;margin-top:32px;overflow:hidden}
+    #loading .bar{height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#818cf8);border-radius:2px;animation:lb 1.8s ease forwards}
+    @keyframes pls{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+    @keyframes lb{0%{width:0%}40%{width:50%}80%{width:80%}100%{width:100%}}
+    #ios-banner{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:rgba(99,102,241,0.97);backdrop-filter:blur(12px);border-radius:16px;padding:12px 16px;display:none;align-items:center;gap:10px;z-index:500;max-width:380px;width:calc(100% - 32px);box-shadow:0 8px 32px rgba(99,102,241,0.5)}
+    #ios-banner.show{display:flex}
+    #ios-banner .icon{font-size:22px;flex-shrink:0}
+    #ios-banner .txt{flex:1;font-family:-apple-system,sans-serif}
+    #ios-banner .txt b{color:#fff;font-size:13px;display:block}
+    #ios-banner .txt span{color:rgba(255,255,255,0.7);font-size:12px}
+    #ios-banner .x{background:none;border:none;color:rgba(255,255,255,0.6);font-size:20px;cursor:pointer;padding:0 2px;flex-shrink:0}
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="logo">✦</div>
+    <div class="name">LifeOS</div>
+    <div class="sub">Your AI Life Assistant</div>
+    <div class="bar-wrap"><div class="bar"></div></div>
+  </div>
+
+  <div id="ios-banner">
+    <div class="icon">📲</div>
+    <div class="txt">
+      <b>Add LifeOS to Home Screen</b>
+      <span>Tap Share ⬆ then "Add to Home Screen"</span>
+    </div>
+    <button class="x" onclick="this.closest('#ios-banner').classList.remove('show')">✕</button>
+  </div>
+
+  <div id="root"></div>
+
+  <script>
+    // Inject manifest via blob (works on any host including file://)
+    const manifestData = atob('ewogICJuYW1lIjogIkxpZmVPUyIsCiAgInNob3J0X25hbWUiOiAiTGlmZU9TIiwKICAiZGVzY3JpcHRpb24iOiAiWW91ciBBSS1wb3dlcmVkIGxpZmUgb3BlcmF0aW5nIHN5c3RlbSIsCiAgInN0YXJ0X3VybCI6ICIvIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAib3JpZW50YXRpb24iOiAicG9ydHJhaXQiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYTBhMGYiLAogICJ0aGVtZV9jb2xvciI6ICIjNjM2NmYxIiwKICAiaWNvbnMiOiBbCiAgICB7InNyYyI6ICJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQU1BQUFBREFDQVlBQUFCUzNHd0hBQUFNblVsRVFWUjRuTzNkZTFTVWRSN0g4ZTh6RjVnWmNBWUdFUmd1WHJpSWdGemNGZTlpYUxVbnV4bmwyUmF2eTZuVFdtclM2a2JiMlQybjNZeWpXNWluOW15ZXhXemRQR1hXN3JxN21XeDAwdHBWODVTQ3FGeFNLMlZ3eUFzd01Nd3d3eno3QjBHV0FUUHdQTTl2NFBkNS9TV1l6amY0dnVjM3cxd2tBZ0FBQUFBQUFBQUFBQmpWQk5ZRCtLUG80VmFSOVF6Z20vSWRwaEd4V3dFN0pKWjk5QW5FS0FKcUlDdzlQd0lsaG9BWUFvdlBMOVloTUwxd0xENzBZaFVDa3d2RjRrTi9sQTVCMFF2RDRvT3ZsQXBCcGNTRkVHSDV3VDlLN1l2c2xXSHhZYmprUEExa1BRR3cvQ0FGT2ZkSXRnQ3cvQ0FsdWZaSmxnQ3cvQ0FIT2ZaSzhnQ3cvQ0FucWZkTDBnQ3cvS0FFS2ZkTXNnQ3cvS0FrcWZaTmtnQ3cvTUNDRkhzMzdBQ3cvTURTY1BkdldBRmcrU0VRREdjUEZYc3FCRUFnR25JQXVQYUhRRExVZlJ4U0FGaCtDRVJEMlV2Y0JBS3UrUjBBcnYwaGtQbTduemdCZ0d0K0JZQnJmeGdKL05sVG5BREFOWjhEd0xVL2pDUys3aXRPQU9DYVR3SGcyaDlHSWwvMkZpY0FjQTBCQU5jR0RRQTNmMkFrRzJ4L2NRSUExeEFBY0EwQkFOY1FBSEJ0d0FCd0J4aEdnNEgyR0NjQWNBMEJBTmNRQUhBTkFRRFhFQUJ3RFFFQTF4QUFjQTBCQU5jUUFIQU5BUURYRUFCd0RRRUExeEFBY0EwQkFOY1FBSEFOQVFEWEVBQndEUUVBMXhBQWNBMEJNQlljTExBZWdXc0lnREhqR0FUQUVnSmdLQ2hJSUoydUp3QzN1OFBKZUJ3dUlRQ0dRZ3hFSWFFOUFUZzd2MjVsUEE2WEVBQkQ0OGFwYUZ5a2lqeWVUcGZiM2Q3SmVoNGVJUUNHZWdQb2NsMXZkN3F1MlZuUHd5TUV3RkIwbEpwaVlsVFUxbmIrc3IzdHdtWFc4L0JJdzNvQW5pVW5xV2xjbElyYTJzNVoyMXJQTjdHZWgwYzRBUmdKRGhaby9IZzFoWVlJWkE2M2Q3UzAxRjFpUFJPUEVBQWp5VWxxVXF0N2ZwMDJKVWl3Mlk3VkVvbDRNMktGSVFCR2NxZHIrMzU5eHgyekpydWMxK3d0TGZXTkRFZmlFZ0pnSUVoTE5DM24yN3RmYytiTW5od2ZIei9XMm5pb211RllYRUlBRE9Ua2FQc2VBU1lpRWdSQldMVnFWZjc1Yys5OHpIQXNMaUVBQm41eVc5Qk5uMXU3ZHUzaXR0YXE4eDN0alZjWWpNUXRCS0N3ektrYWlvOVgzL1Q1eU1oSVkxSFJ6eGZXMTcvK0FZT3h1SVVBRkNRSVJIZmRHZHp2NzVlVWxCUmMvUEwxeW01UFo1ZUNZM0VOQVNobzN0d2dtampoNW12L1hoYUx4ZnprazJzWDE5WHRmbC9Cc2JpR0FCUVNHaUxRZlV2NnYvYnZ0VzdkdXNYZDdnUEg4T1E0WlNBQWhheFlycVBRa01GZi9LTFJhTlRsNVM4V25hNzV3MXNLak1VOUJLQ0FXeGNHMGJRYzdlRC80VGN5TWpJU0h2MUZadHkxYTZlL2tHOHFJRUlBc2t0S1ZOUDlCVHEvLzl6cTFhdnk0eXdIanVBT3Nid1FnSXdzRmhXdGU4elE5NXdmZjczdy9HK1dCbWxmcjVCMktyZ1JBcERKMkFnVkZhOFBJWU5oNkM5NjEyZzA2cklYSHJsVnE2NDRMdUZvY0FNRUlJUG9hQlZ0K3FXQndzS0cvNDRQQm9NaHVQUzVXOU5OeGsvckpCZ052Z2NCU0d6U1JEVTl1U21FekdicHZyUW1rOG53KzJkbVRreUlPNC9YREVnTUFVaG9ScTZXbnRoZzhPbkhuZjdTNi9WQlQ1Vmt4TXpJdGVLbGt4SkNBQkxRYW9tV0Yrcm9vU0s5ck8vMHB0Rm8xQThWcFVhdlhtRnYwZXZ4aGxwU3dHdUNoeWs1U1UzTEN2VVVhMUh1dW1UT25OaXdwS1MyenJmZTF1aFBWbmtVdTl6UkNBRU1rZEVvVU1FU0hjMmVwU1dCd1pWeFZKUlIvOWdhb2hNbm5kMXZ2ZTFSTnpkN2xSOWlGRUFBZmpLSHErajIyNE5vM3R3Z0N2TDl3VjNaNUdUcjFGbVpvdmpKY1kvdzdnRVhXWnNRZ2o4UWdBODBHcUtwR1JxYU5WTkxXWm5hSVQrd0pSZVZTaEJtenREU2pGd3RuYTMxMEpHamJ2cnNoSWRjTHJ6R2ZqQUlvQjlSVVNxYW5LS2gxTWxxU2svVFVJZ01QOW1SbWlBUXBVM1JVTm9VRFMzN21VaW56M1JUWGIySDZ1bzgxR2oxNGowbmZnRFhBUWdDVVdpb1FDYWpRQ2FUaWhJbnFTa2pYVU1XaStvN3I5a2RpWUtEQlpxV28rbDc4WDFYbDBoTmw3MTA1b3lINmh1NnFhVlZwTlpXTDludEl0ZGhjQjJBS0JMWjdTTFo3U0pkYXZUUzZUTWUrdGU3TG9xSVVOSDRCRFdsVGxaVGNyTFhFMnZSamNpdjA0VUxGMnlIRDM5OHRxcnFTbnRqMDVoUVVjeVlaRFJOaVNjbWQ5c0QwNGo4eGtwUEZKM09xL1pPaCsyNncyRzcvdW54VCtvdVhYei9zK3ZYejE1MHU5czdFeE1UbzVjdFc1WlhXRmlZbDV5Y0hNTjYyb0ZZcmRacmUvYnNPYng3OSs1RDFkWFZYM3ovOXpVYWZiQXBMQ1UyTGk0L095cDZkcG9oSk1ac01FU0Y2M1JqVFlLZzRpNk1BZitIaXg1dTVmWndGTVZ1cjkzK1ZmUFZLMVhubTZ5SFR6VlpQenJWMGxMZnVHalJvcXlubjM3NmdieTh2SFRXTTk2b3VycjZpMmVmZlhiZnZuMzcvdWYxZXIvemZSc3pabnhVakdWZVJveGxYa1prNUkrU3h4Z25SS3RVMmdDN0t5K3Y4aDJtSDl4MUJPQ0h0cllMbDg4MXZIbm84OC8zSHBxYUVXMHFLeXNybWo1OWVoTExtUm9hR3BvMmJ0eTRhLy8rL2NkRjhkdGI4d1pEakRreDZZSDVTU2svelRPYjB5Y3dIREVnSUFDSldScy9yS282K2Z5K2UrNU9qOXU4ZWZPeXNMQ3dFQ1V2MytsMHVrdExTOTh1TFMxOXgrVnl1WHMvYnphblQ4aWV0dkgrQ1JQdm1jM2pUWnIrOUJjQTdnTU1rU1YyUVpZbGRrSFd4Y2FqdFhsNUQ1YTkvUEt2QytiT25UdEZpY3MrZGVyVWwwdVhMdDFhVzF2YjkxNmlSbE5pVE82TTM2MGFQK0dPNmJpVDZ6dWNBQklRUmEvWVVQOWF4ZDEzaWwxUFBMSCtUa0dRYndGMzdkcjF3Wm8xYTE3cDdPeDVxYVJhcmRObVpXOG95TXplY0o5YUhSd0FqMDBISnR3RVVvQ2p3M28xM1BSbTViWnRUeFZvdGRMZnlkeTBhZE5yVzdkdS9YdnZ4K0htOVBINWkzWnREQXRMaVpYNnNrYWIvZ0xBMDZFbFpBaXhSSFIyclMxWTkvak9EenM2cFB0blQ3dTd1NzFGUlVVdjNiajh5U21GK2ZmY1c3a0Z5ejg4Q0VCaUtwVkc3Zlk4dVBCWEpSL1VPaHdPMTNEL1BsRVV4UlVyVnJ5NGMrZk95dDdQNWM1NFp1WDhCWDljcTlib2IzNlhYZkFMQXBDSjA1V1h2Ym4wNUNXMzI5MDluTCtudUxqNDFUMTc5aHdtSWhJRXRXcGUza3VQVGMxYWY2OGtRd0lDa05ObFcwYmk5cGZxYkVQOTgxdTJiUG5idG0zYi90bnprU0RrM2ZMSytwVEp5eGRLTlI4Z0FObWRyVTJ3L0dQL3VhLzkvWE9WbFpYVkpTVWx1M3MvbmpscjgrckVwQWZtU3pzZElBQUZIRGdZR1ZsYjk3WFAveEMyeldacktTd3NMT3Q5U2tObTF1TkwwcWV1dVV1K0NmbUZBQlRnOFJEOTVhLzZNUzZYYi9jSFZxNWN1ZDFtczdVUUVWbGk4ekovblB2YjViSU95REVFb0pEbVppKzlWK0VlOUFHeXZYdjMvdmZnd1lNbmlJajArbkZoQy9ML3ZBRlBhWkFQQWxEUWV3YzlLcHZOMWU4cDBON2U3aXd1TG42MTkrUDV0L3hwblY0L0xreVI0VGlGQUJUa2RoTzkrNTYzMzBlSXk4cks5amMyTmw0bElwbzRhY21jdUxpRk9jcE54eWNFb0xBalI5MTA5V3IzVFU4eGNUZ2NydTNidC8rYmlFaXJEZEhObkxWNXRmTFQ4UWNCS016ckphcjR6ODMzQmNyTHk5Ky9jdVZLR3hGUnh0Ukg3emFFV0NLVW40NC9DSUNCSThmYzVQbmVHN3J0MkxHamdxam5KWXRwR1k4c1pqRVhqeEFBQXc2SFNEV252eTJncHFibXE1cWFtcStJaUZKU1Z5elM2U0tNekliakRBSmc1T2l4dmhkeDBSdHZ2UEZSNzY5VFUxZmR4bVFnVGlFQVJtcHJQWDN2eDFOUlVYR1NpQ2pjbkpZUWJrNUxZRGdXZHhBQUkrMGRJalZhdmVSMGVycFBuRGh4Z1lob1VtTEJQTlp6OFFhdkNXYW9vY0ZEcmExZThuaTZ2VVJFc1hINTJZeEg0ZzVPQUlhc1RWNnlOcW5VNGVhMEJJM0dvSXVJeUp6SWVpYmU0QVJncUxuWlM0SkFGQk16TzAydkgydFNxVFJjdlZsVklFQUFETm0rQ1NBc1BEVmVVR254dldBQVgzU0c3SGFSREhxUmpNWkpNYUxveFR0d01JQUFHT3JxRXNubEVzbG9Ta1FBakNBQWhrU1J5TjR1a2s0MzF0U2xiKzFnUFErUDhGTWd4aHdPa2JSYVE3QldHNkpuUFF1UEVFQkFFQVNkZml5ZS84TUFBZ2dRUVVFbVJkOWRHbm9nQU9BYUFnQ3VJUURnR2dJQXJpRUE0Qm9DQUs0aEFPQWFBZ0N1SVFEZ0dnSUFyaUVBNEJvQ0FLNGhBT0FhQWdDdUlRRGdHZ0lBcmlFQTRCb0NBSzRoQU9EYWdBR1U3ekRobitlRUVXK2dQY1lKQUZ4REFNQTFCQUJjUXdEQXRVRUR3QjFoR01rRzIxK2NBTUExQkFCYzh5a0EzQXlDa2NpWHZjVUpBRnp6T1FDY0FqQ1MrTHF2T0FHQWEzNEZnRk1BUmdKLzloUW5BSERON3dCd0NrQWc4M2MvY1FJQTE0WVVBRTRCQ0VSRDJjc2hud0NJQUFMSlVQY1JONEdBYThNS0FLY0FCSUxoN09Hd1R3QkVBQ3dOZC84a3VRbUVDSUFGS2ZaT3N2c0FpQUNVSk5XK1NYb25HQkdBRXFUY004bC9Db1FJUUU1Uzc1Y3NQd1pGQkNBSE9mWkt0c2NCRUFGSVNhNTlrdldCTUVRQVVwQnpqeFJiMEtLSFcwV2xMZ3RHQnlXdVFCVjdLZ1JPQS9DSFV2dkNaQ2x4R2tCL2xMNmlaSHF0akJDZ0Y2dGJDQUZ4c3dRaDhJdjFUZU9BQ0tBWFF1QUg2OFh2RlJCRC9CREVNUG9FeXRMZktPQUdHZ2lpR0RrQ2Nka0JBQUFBQUFBQUFJQlgvd2RXemRDeDFJZ2hmQUFBQUFCSlJVNUVya0pnZ2c9PSIsICJzaXplcyI6ICIxOTJ4MTkyIiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIn0sCiAgICB7InNyYyI6ICJkYXRhOmltYWdlL3BuZztiYXNlNjQsaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQWdBQUFBSUFDQVlBQUFEMGVOVDZBQUFsTWtsRVFWUjRuTzNkZVhoVTViM0E4ZCtaSlpNZGtrQllFa0xDRGdrZ2kyRlZ5aVppVVpZS1dLVkZGTGkxVjcxVnF0WldiQXN1cmRoRjIzcDc2OXJhVWdVVkY2cXRTRVdzSXF1R2ZaTTFBUW1FQUNFaHk4eWMrMGRNQmNxU2tKbnpublBlNytkNWVJRHdtTHllazh6dm0zZE96b2dBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFPQk9odW9Gd0JxM3pqeHVxbDREQU9kNDlnOU5tQTh1eHdsMkNRWThBQ3NSQ003SENYUWdoajBBT3lJS25JV1Q1UUFNZkFCT1JCRFlHeWZIaGhqNEFOeUlJTEFYVG9aTk1QUUI2SVFZVUk4VG9CQkRId0NJQVZVNDZCWmo2QVBBK1JFRDF1RkFXNFRCRHdEMVJ3aEVId2M0aWhqNkFOQjR4RUIwY0ZDamdNRVBBSkZIQ0VRV0J6T0NHUHdBRUgyRVFHUndFQ09Bd1E4QTFpTUVHb2VEMXdnTWZnQlFqeEM0TkJ5MFM4RGdCd0Q3SVFRYXhxTjZBVTdEOEFjQWUrTHh1V0dvcFhyaUV3c0FuSVBkZ0l2akFGMEVneDhBbklzUU9EK2VBcmdBaGo4QU9CdVA0K2RIR1owRG56QUE0RDdzQnB5SkhZQ3pNUHdCd0oxNGZEOFRBWEFhUGprQXdOMTRuUDhLMnlIQ0p3UUE2RWozcHdTMDN3RmcrQU9Bbm5SLy9OYzZBSFEvK1FDZ081M25nSmJiSHpxZmNBREF1ZW4ybElCMk93QU1md0RBdWVnMkg3UUtBTjFPTGdDZ1lYU2FFOW9FZ0U0bkZRQnc2WFNaRjFvRWdDNG5Fd0FRR1RyTURkY0hnQTRuRVFBUWVXNmZINjRPQUxlZlBBQkFkTGw1anJnMkFOeDgwZ0FBMW5IclBIRmxBTGoxWkFFQTFIRGpYSEZkQUxqeEpBRUExSFBiZkhGVkFManQ1QUFBN01WTmM4WTFBZUNta3dJQXNDKzN6QnRYQklCYlRnWUF3Qm5jTUhjY0h3QnVPQWtBQU9keCt2eHhkQUE0L2VBREFKek55WFBJc1FIZzVJTU9BSEFQcDg0alJ3YUFVdzgyQU1DZG5EaVhIQmtBQUFDZ2NSd1hBRTZzTEFDQSt6bHRQamtxQUp4MmNBRUFlbkhTbkhKTUFEanBvQUlBOU9XVWVlV1lBQUFBQUpIamlBQndTazBCQUNEaWpMbGwrd0J3d2tFRUFPQnNkcDlmdGc0QXV4ODhBQUF1eE01enpOWUJBQUFBb3NPMkFXRG5hZ0lBb0w3c09zOXNHUUIyUFZnQUFGd0tPODQxV3dZQUFBQ0lMdHNGZ0IwckNRQ0F4ckxiZkxOZEFBQUFnT2l6VlFEWXJZNEFBSWdrTzgwNTJ3U0FuUTRLQUFEUllwZDVaNXNBQUFBQTFyRkZBTmlsaGdBQXNJSWQ1cDR0QWdBQUFGaExlUURZb1lJQUFMQ2E2dm1uUEFBQUFJRDFsQWFBNnZvQkFFQWxsWE9RSFFBQUFEU2tMQUQ0N2g4QUFIWHprQjBBQUFBMHBDUUErTzRmQUlDdnFKaUw3QUFBQUtBaEFnQUFBQTFaSGdCcy93TUE4Sitzbm8vc0FBQUFvQ0ZMQTREdi9nRUFPRDhyNXlRN0FBQUFhSWdBQUFCQVE1WUZBTnYvQUFCY25GWHpraDBBQUFBMFJBQUFBS0FoU3dLQTdYOEFBT3JQaXJuSkRnQUFBQm9pQUFBQTBGRFVBNER0ZndBQUdpN2E4NU1kQUFBQU5FUUFBQUNnSVFJQUFBQU5SVFVBZVA0ZkFJQkxGODA1eWc0QUFBQWFJZ0FBQU5BUUFRQUFnSWFpRmdBOC93OEFRT05GYTU2eUF3QUFnSVlJQUFBQU5FUUFBQUNnSVFJQUFBQU5SU1VBdUFBUUFJRElpY1pjWlFjQUFBQU5FUUFBQUdpSUFBQUFRRU1FQUFBQUdpSUFBQURRRUFFQUFJQ0dDQUFBQURRVThRRGdIZ0FBQUVSZXBPY3JPd0FBQUdpSUFBQUFRRU1FQUFBQUdpSUFBQURRRUFFQUFJQ0dDQUFBQURSRUFBQUFvQ0VDQUFBQURSRUFBQUJvaUFBQUFFQkRCQUFBQUJvaUFBQUEwQkFCQUFDQWhnZ0FBQUEwUkFBQUFLQWhBZ0FBQUEwUkFBQUFhSWdBQUFCQVF3UUFBQUFhSWdBQUFOQVFBUUFBZ0lZSUFBQUFORVFBQUFDZ0lRSUFBQUFORVFBQUFHaUlBQUFBUUVNRUFBQUFHaUlBQUFEUUVBRUFBSUNHQ0FBQUFEUkVBQUFBb0NFQ0FBQUFEUkVBQUFCb2lBQUFBRUJEQkFBQUFCb2lBQUFBMEJBQkFBQ0FoZ2dBQUFBMFJBQUFBS0FoQWdBQUFBMFJBQUFBYUlnQUFBQkFRd1FBQUFBYUlnQUFBTkFRQVFBQWdJWUlBQUFBTkVRQUFCcnorMVd2QUlBcUJBQ2dzVURBVUwwRUFJb1FBSURHNmdJZ0ZLcXNVYndVQUJZakFBQ05CV0pxZjYrcEtUK2xkaVVBckVZQUFCcExUS3pkQVFnR0s2b1VMd1dBeFFnQVFHUE5tOWMrQkFScnlpc1ZMd1dBeFFnQVFHTjFBVkJaV1hKQzhWSUFXSXdBQURTVy9tVUFsSlh0T2FSNEtRQXNSZ0FBR211Ulh2c1FjT0xFN2k4VUx3V0F4UWdBUUZPQmdDRVpHVjR4REpFVHgzY2RWTDBlQU5ZaUFBQk5wYVlhNHZPSkpDVVpjdUw0NXdRQW9Ca0NBTkJVYW1ydGwzK1Q1T3JxMHRJdCswUk1VL0dTQUZpSUFBQTBsWnBTZXcrQStQalNzbENvcXViVXFjUEhGUzhKZ0lVSUFFQlRMZEs5SWlMU3ZIbDFsWWhJK2NtaUkwb1hCTUJTQkFDZ3FkYXRhNy84VzdmeUdpSWlKMDhXRWdDQVJnZ0FRRk90VzlWKytiZkpUQWlJaUJ3L3RyMVE2WUlBV0lvQUFEUVVFMk5JV2xydGwzOTJkdk1rajhkamxKWnUzYTk0V1FBc1JBQUFHc3JNOEloUmV3Mmd4TVVGL0YyNmRNazhkbXdiT3dDQVJnZ0FRRVB0MjNuUCtIdCtmbjdINDhlMkY1bG1tQjhGQkRSQkFBQWFhbmRXQVBUcjE2OVRNSGlxaXVzQUFIMFFBSUNHMnVYODV3NkFpTWpodzJ0M0tGa1FBTXNSQUlCbW1qYjk2Z0xBT2oxNzlzeHUwcVJKZkhIeG11MktsZ1hBWWdRQW9KbmNicjcvZUp2WDYvVU1IVHEwKytGaWRnQUFYUkFBZ0diT0ZRQWlJaU5Hak9oNXRHVGpudXJxRXhVV0x3bUFBZ1FBb0JIREVPbmE1ZHdCTUh6NDhCNm1HUW9mUExCOGc4WExBcUFBQVFCb0pDdkxLMGxKeGpuL3JVdVhMaGtkT25Sb2RhQm9XWUhGeXdLZ0FBRUFhS1JQcjNOLzkxOW53b1FKL1E4VWZiRGVvdVVBVUlnQUFEVFNwN2YvZ3Y4K2Z2ejQvc2VPYlM4NmNXTFhRWXVXQkVBUkFnRFFSR2FtVjFxMHVQQ1hmTDkrL1RwbVpHU2s3ZG45NWljV0xRdUFJZ1FBb0luTCsxeDQrMTlFeERBTTQ4WWJiN3hpNys3RkJBRGdjZ1FBb0FIREVCazQ0TUxiLzNWdXZ2bm1ZY1hGYTNaVWxCOG9pZkt5QUNoRUFBQWF5TXYxU1VwSy9iN2N1M1hyMWlZLy8vSU9uKzljK0dHVWx3VkFJUUlBME1EZ1FmWDc3ci9PdEduVGhtL2ZQditmVVZvT0FCc2dBQUNYYTVKc1NNOGVEUXVBS1ZPbURESERCMHU0TlREZ1hnUUE0SExEaHNhSTcrTFgvNTBoTVRFeGR2cjA2U08zYi8vejB1aXNDb0JxQkFEZ1lqRitrU0ZEWWk3cHY3Mzk5dHV2MmJQcmxROTViUURBblFnQXdNVUdEb3lSeElSejMvcjNZckt6czlPdnZYYlVaZHUyL25GSmhKY0Z3QVlJQU1DbFBCNlJVU012N2J2L09yTm56NTYwWmZQVDc1aG1LQnloWlFHd0NRSUFjS2xCQS96U3ZIbmp2c1M3ZCsvZTl1cFIrZTMzN0g2TEd3TUJMa01BQUM3azlZcDgvZXVCaUx5dkgvLzR4NU0vKzNUZVFoSFRqTWc3QkdBTEJBRGdRb01IeFVpenRNaDhlZWZtNW1aOS9acGUyYnQzdmJFaUl1OFFnQzBRQUlETEJBS0dYSGR0Wkw3N3IvUG9vNDlPMmJyNTE0dllCUURjZ3dBQVhHYk0xMk9rU2ZLbFhmbC9QaGtaR1drelo0N3R1M1BIeXg5RTlCMERVSVlBQUZ5a2VUT1BqQndlMmUvKzY5eHp6ejNqRGhUOTRXL0I0S21xcUh3QUFKWWlBQUFYbVR3cHRzRjMvYXV2K1BqNHdHTS9mK0Q2OVFXL1hoU2Rqd0RBU2dRQTRCSjlldnZsc3A1Um12NWZHamR1WEw5T0hmWWRMT2VsZ2dISEl3QUFGNGlQTitUR2I4WmE4ckYrL2V0ZlROdTA0U2N2V3ZMQkFFUU5BUUM0d0tUcll5Tis0ZC81dEd6WnN1bGQzeHZWZmZldU56NjI1QU1DaUFvQ0FIQzQ3bmsrR1R5b1lTLzMyMWpUcGswYm50NTgyYnJxNnVQbGxuNWdBQkZEQUFBT2xweHN5QzAzeHluNTJMLzc3YnliOSt5YXQwREpCd2ZRYUFRQTRGQ0dJWExyelhHU2xHVE4xdi9aVWxOVEUzLzg0TmcrZS9md09nR0FFeEVBZ0VPTkhCRWp1Ym5SdmVyL1lvWVBIOTdqeXNIN0QxVHdVd0dBNHhBQWdBTjE3dVNUNnlkWWM5WC94ZnpvUi9lTzl4clB2OE50Z2dGbklRQUFoMGxOOGNoM1pzYUp4eVpmdlI2UHgzanl5UitNS3o3MHpOdXExd0tnL216eUVBS2dQdngra2UvZXB1NTUvL05KU1VsSm5QdlRFYmxIRHIvL21lcTFBS2dmQWdCd0NNTVF1WFZhbkdTMzlhcGV5am4xN05remUrYjBXUE5rMlo1RHF0Y0M0T0lJQU1BaEpsNGZLMzM3V1B2ei9nMTF6VFdqZWcwZnVuRjdNRmhScVhvdEFDNk1BQUFjWVBqUUdMbHFSSXpxWmRUTGpCazNYcEdUOWNhSHBobm1va0RBeGdnQXdPYnlML2ZMRFpQdGNjVi9mYzJlUFdORVdzcHJ5MVN2QThENUVRQ0FqZlh1NVpQcHQ4U0pZYTlyL2k3SzQvRVlqeno4N1N0VG15NVpyWG90QU02TkFBQnNxbnVlVDJaT2o3Zk5qL3MxbE0vbjg4NmRNK2F5NUtTUDFxdGVDNEQvNU5DSEZzRGQ4bko5OHQzdnhJdFA3WTMrR2kwUUNQam4vdlRLemsyU1YyOVJ2UllBWnlJQUFKdnAzY3N2dDM4M1h2ejJ2dUMvM2hJU0VnSnpmenFnWFhyenpidFZyd1hBVndnQXdFWUc5dmZMZDJiR09mNDcvN1BGeDhjSEhuemdzc3lNVnR2M3FsNExnRm9FQUdBVEk0Ykh5TFNiN1hPTDMwaUxqWTMxLy9EKzdxM2I1K3dnQWdBYmNPbEREZUFjaGlFeWVWS3MzREFwMW5GWCt6ZFVJQkR3LytDKzNsbjVmZmNVcVY0TG9Ec0NBRkFveGk5eTIzL0Z5OGpoenJqSlR5UVlobUhNbk5FajQ1cXJpdzY2UFhnQU95TUFBRVZTbWhweTcvY1RwSGN2bHozaFgwOFR4bmR0TlhYS29TL2lZcWtBUUFVOUgza0F4VHAzOHNwM1pzYmI3bFg5ckRaNGNNZVdtVzJLanovelhGenlGMStZZWg4TXdHTHNBQUFXR3pFOFJtYmRsYUQ5OEsrVDNUYTl5ZjMzK21wNmRBOVdxVjRMb0JNQ0FMQklRb0loMy8xT3ZOd3dLZGExVi9wZnFvU0V1Smc3YjA4TlRQeEc1VW0zM1A4QXNEdWVBZ0FzMExtVFQ2YmZFaXNwS1V6K0N4bDFWWHBpNTg3SFQ3M3dSMjljWVZGWTlYSUFWK1BSQ0lnaXYxL2tHeE1DOHYyNzR4bis5WlRkdGtuYy9mY0ZRcU5HZWtMc2xBRFJ3dzRBRUNVZE8zcmw1bS9GU1lzV1RMR0dDZ1Q4M29uWCs2VjM3L0xxUC85Rll2WVhobFF2Q1hBZEFnQ0lzTGhZUXlhTUQ4alhoc1M0L3NZKzBkYStYVUxNais0UGg5OWRVbTBzZnJ2R3FLNDJWUzhKY0EwQ0FJZ1F3eEFaUE1ndkU4YkZjb1YvQlBsOEhzODFvMk9sWDc0bitOcnJJZC9LVlRXcWx3UzRBZ0VBUkVESGpsNjVZVktzdE0zeXFsNkthNldseGZobTNDb3lkSWd2dk9DVmFzK3UzVHd0QURRR0FRQTBRblpicjR5OUxpRGQ4L2hTc2txSERuN1BEMy9nbDRMMVFYbjlqU3JoK2dEZzB2Q29CVnlDckRaZXVlN2FnRnpXa3k4aFZYcjI4RW1QN2o1WnU2NUdGcjlkTFlXRUFOQWdQSG9COVdRWUlubTVQaGsxTWthNmRPRkx4dzRNUTZSdkg3LzA3ZU9YVFp1RDhvOTNxMlh6bHFEcVpRR093S01ZY0JIeDhZYjA3K2VYb1VOaXBGVXJmcVRQcm5LNytTUzNtMC8yRjRiay9XVTFzbXAxalZSVzhsTUR3UGtRQU1BNUdFYnQzZnNHRC9KTG45NSs0ZmEwenRFbTB5dmZudUtWeVJNRHNtcE5VRDc4VjdYczJzWFRBOERaQ0FEZ1M0WWgwaTdISzMzNytxVnZieDkzN25PNFFNQ1FLd2I1NVlwQmZqbDhPQ3hyMXRiSTZqVkIyYmVmR0FCRUNBQm9MamJXa0M2ZHZaS1g2NU9lUFJqNmJ0Vzh1VWRHWHgyUTBWY0hwTGc0TEFYcmc3SnhjMUMyYnc5S0RiY1ZnS1lJQUdnbE50YVFkamxlYWQvZUsxMDZlNlZEZTU5NCtkRjlyYVNuZTJUa2lCZ1pPU0pHcW10RXRtOFB5clp0SWRtNUt5aDc5NFNrbWlDQUpnZ0F1RlpTa2lFWkdWN0phTzJSekF5djVHUjdKQ1BEeSsxNThXOHgvdHFmN01qTDlZbElRRUloa2YzN1E3Sm5iMGdLaThKU2RDQWtSVVZocWFqZ1lrSzREd0VBUi9CNFJIdytRM3crRWErMzl2bmR4QVJERXI3OGxaUmtTRnFxUjlMU0RFbEw4MGl6Tkk4a0pqTHAwVEJlcjBoMnRsZXlzOC9jRmpwK3dwU1NJMkVwT1JxV2toSlRqcGFHcGF6TWxQTHkybDhueTAycHJqWWxHQlFKQlUwSmhrVEN2Sm94Ykk0blBPRUloaUgvL3M3ZFk0Z1lJaUxHVjI4LzF5OGdVc3h3VGRDVVVNZ3c1TXRQdmd0ODdua01Qdi9nQ093QXdCRkNJWkZReUpSd09CZ0toMnVDNFhCMU1CU3FEZ2FERlpWVmxVZkxxcXBLVDFaV0hpMnJyRHh5b3Z4azRlR3lzcjNGY1hFVmxUblp5YkdkT21VMXk4dkx5OHJQeisrWW01dWI1ZkY0ZUhqR09kWFUxSVFLQ2dwMnIxNjlldWVtVFp2MmJkaXdZZCtHRFJ2MmxwYVduaFFSaVl0djBUUXBNU3M5TWFsTmVtSmlWdk9FeEl4bXNiSE5rbU5qVTVNQ2daU2tRR3hxa3M4WEYvQjRZbnhlajk5bmVQeGVqOGZIVlNhd0pRSUFEbU9LaUdtYXBtbUtHVGJGTk1VVVUwd3piSXFZWnUyLzFmNjV1UGp3OFYyZnI5M3g5dHUxRDk0aUlzbkp5Zkg5Ky9mdk5HREFnTTdEaGczclBtREFnQzUrdjU4SGFFMVZWbGJXTEYrK2ZOT3laY3MyZnZ6eHgxdFhyVnExNDlTcFU5WG4vUTlNVTB3Sm02WVpydjNrcTMyam1PYVhienY5bDVoaFEwdyt0MkJiRWY5TzZOYVp4N2xhQnJaeTZsVHhzZEtqbS9lV0h0Mjg3MmpwbG4ySGk5ZnVPRmE2Wlo5cGhzMmtwS1M0NGNPSDl4ZzFhbFN2TVdQRzlNM016RXhUdlY1RTE4NmRPdzh1WHJ4NHpULys4WTlQUC9qZ2cwM25HdmdlajkrYm1wYVgwN3g1N3c1TlU3cG1wYVoyeTBwSnpXMGJDRFJOVkxGbW9NNnpmMmdTc2JsTkFFQkxOZFZsRmNYRnE3Y1hIMXExN2NDQjVSdUtENjNhYXByQjhNQ0JBenRQbWpScDhEZSs4WTMrR1JrWnhJQkw3TnExNjlBcnI3enk4WUlGQ3o1YXUzYnQ1MmYvdTljYjYyL1phbUJ1cTlaWDVMVm9rZCtsZWZNK0hiMit1QmdWYXdVdWhBQUFJcXltNXVTcEEwWEwxaGNXTHYxMC85Ni9yNm1vT0hoMDZOQ2hlZE9uVHg4NWZ2ejQvckd4c2R3TTJHSEt5OHNyRnl4WThOSFRUeis5Wk1XS0Zkdk8vdmZrNUhhdDJyUzl1bTltNXZCZXJWb055bVhnd3drSUFDQ3FUUFBRRnl1MzdkNjE2Ris3ZDcvNVNTRG1WTldVS1ZPRzNIYmJiVmQzN2RvMVUvWHFjR0VGQlFWN25ucnFxWGYrK3RlL2ZsaFdWbmJxOUg5TFNzNXVrWk16Ym1CTysvR0Rtalc3ckwycU5RS1hpZ0FBTEdPYUJ3NTh1SEg3MWo4dTJidm5ieXRIalJyV2ZkYXNXV09IRGgzYVhmWEtjS1lsUzVZVVBQNzQ0NisvKys2N241MytkcDh2UHJaZCt3bURPbmVaT2pLOVJYNW5SY3NESW9JQUFCU29xanAyOHZNZEwzK3daZk96ZjIvWExpSG13UWNmbkR4MjdOaDgxZXZTbVdtYTVxdXZ2cnBpN3R5NUM5ZXZYNy9uOUg5TFRjdkw3dHB0eHVqMkhhNi93dTlQakZPMFJDQ2lDQUJBS2RQY3YrL2RkUnZXLythTmpOYW5UczJaTStlYm8wZVA3cTE2VmJwNTY2MjNWcytlUFh0K1FVSEJudFBmbnBFNXRHZjNIbmVPeThnY2RwbWFsUUhSUXdBQU5sRnlwR0RYcCt0Ky9uS2J6T05sVHp6eHhQVGV2WHUzVTcwbXQvdm9vNCsyM24zMzNjK3RXclZxeDFkdk5ZeWNkdGNOdUt6M2ZSTlRVM096bFMwT2lESUNBTENaSTRjLzNmbnB1a2RldW1wa1Z1ckREejk4VTNwNmVoUFZhM0tid3NMQ2t2dnV1KzlQOCtmUFgzNzYyN1BhanI2OFQ5OEhia3hOeTh0V3REVEFNZ1FBWUZPSHZsaXhaZU9HT1grKzUvczNEYjd0dHR1dU5nenVDdDlZTlRVMW9Ybno1aTE2K09HSFg2bW9xS2lxZTN1TGx2Mjc5T3YveUMzTjAvdDBWTGsrd0VvRUFHQmpwaGsydDI5NzhiMkEvOTNWdi92ZDQxTTdkKzZjb1hwTlRyVm16WnFkdDk1NjYrOU92OEF2SWFGMTJ1WDk1bnk3ZlllSlZ5cGNHcUFFQVFBNFFFMTFXVVhCWncvOTlZYkpiVlB1dmZmZThid0lVZjFWVmxiV3pKNDllLzZ2ZnZXck4wT2hVRmlrOXZhODNYdmVPZjZ5WHZkYzcvUEZCVlN2RVZDQkFBQWM1TkFYSzdhRVF5KysrMysvLzlrVVhtdmc0alp1M0xqdm05Lzg1aTgyYnR5NHIrNXR6WnIzNm5ERmtOLzlOeGY0UVhlUkRBQmVEUkNJc2hZdEIzUU5oWHAzdUduS0U0dis1ODQrV1JNbWpPK3ZlazEyOWRSVFQ3MHphOWFzNXlzcksydEVhdS9SMytmeUg5MlkxLzIvcnpNTXIwZjErZ0EzWVFjQXNOQVhCLysxcVZ1WGxSc2VlV1QyUkorUDE0bXZVMVpXZG1ycTFLbFBMbHEwNkpPNnQ2V2tkc3NhT3V6WldTbXAzYkpVcmcyd2swanVBRkRVZ0lWYXRocWNlN0Q0bGpFM1RabjljbkZ4OFhIVjY3R0RiZHUyRmVYbjU5OXordkR2Mm0zNjZMSGozMytjNFE5RUR3RUFXQ3dRU0VsTWFuTC9qZE5udnJKNjFhclZPMVd2UjZXMzNucHJkWDUrL3IxYnQyNHRFaEh4K3hQalJsejE1L3NHRHY3RlRLK1hWMkFFb29rQUFCUkpiekZseE04ZUs2MTU4ODIzMTZwZWl3cFBQUEhFNG5IanhqMTY0c1NKQ2hHUkprMDdabHczL3YxNWJiT3Y1Um9Kd0FJRUFLQlFhbHIvcmk4dmJKZjlmMytZLzZIcXRWakZORTF6MXF4WnozL3ZlOTk3Tmh3T215SzFkL01iTys3OXg1bzI3Y1E5RXdDTEVBQ0FZbkh4cmRNK1dUbTgzNXc1VHk4MVRkUFZGOUZXVjFjSEowK2UvUGd2Zi9uTE4rdmVscHQzMjVnUlY4Mi8zeCtURks5eWJZQnVDQURBQnJ5K3VKaTloUk9IL2VpQkZ6K3N1L0dOMjFSV1Z0YU1IVHYya1lVTEYzNWMreGJENk5mLzRXbjlCLzdzVnNQZ0prbUExUWdBd0NZTXcyTVVIeGwzNWV3SDMvcTB1cm82cUhvOWtWUlJVVkUxWnN5WWgvNys5NzkvS2lMaThjVDRobzE0NGZ0NVBXNi9UdlhhQUYwUkFJRE5GQjhaMXVlQjJlOXRxcnNaanRPVmw1ZFhqaDQ5ZXU3U3BVdlhpOVRlM0dma3FMLytNS2ZkdUlHcTF3Ym9qQUFBYk9qb3NjRTk1ejYwNG5Pbjd3UlVWVlhWakIwNzl0SGx5NWR2RWhIeCtlSUNWMTI5NElITU5pTjZxVjRib0RzQ0FMQ3BRNGY3ZFBuWlkrdjJCNFBCa09xMVhJcGdNQmlhTkduUzQzWGYrZnQ4OGJHalJyODZ1M1hHa0I2cTF3YUFBQUJzYmQvK2JqbVAvMkx0dnJvZmwzT0tjRGhzVHAwNjljazMzM3h6bFlpSTF4dndqeHoxMHYwdFd3M0tWYjAyQUxVSUFNRG1kdTdxbXZPL3YxKzNWL1U2R3VMdXUrOStidjc4K2N0RlJEd2VuM2ZZaUJlK3ozZitnTDBRQUlBRGZGclFLWHZCd28yRnF0ZFJINy81elcvKzlzUVRUeXdXcWYzSmhpdS85dnM3czlwZWs2OTZYUURPUkFBQURyRmthVmJtMG45dU82aDZIUmV5ZVBIaU5YZmRkZGR6ZFgvdk4rQ1JXOXAzbUhpbHlqVUJPRGNDQUhBSTB4UlorR3FyVmhzMzdUdWllaTNuOHRsbm4rMis0WVliZmxGM0k2TnVlZi8xOWR5ODI4YW9YaGVBY3lNQUFBY0pCa1grOUdKS1drbko4UXJWYXpsZGFXbnB5UWtUSnZ5OHZMeThVa1FrSyt2cXZ2MEhQSHFMNm5VQk9EOENBSENZbzZXbThmUnpaa3d3YUk5YkJvZkRZZk9tbTI3NjFlN2R1dytKaUtTbGRjOFpPdUw1V1liaDVmRUZzREcrUUFFSDJyblQ0M3ZwNVNPblZLOURST1FuUC9uSlMrKzg4ODQ2RVpGQW9Hbmk4S3YrY3AvUEZ4K3JlbDBBTG93QUFCenFndy9qRXRhc1BYeFM1UnFXTGwyNi9xR0hIbG9vVW52Ri85ZUdQWE5YVWxMYkZpclhCS0IrQ0FEQW9VeFRaUDVMc1ltbHBlVlZLajUrU1VsSjJkU3BVNStzZXdualhuM3V2eUd6emNqZUt0WUNvT0VJQU1EQlRwd3c1VTkvbHBndlo3Q2xac3lZOFZSUlVWR0ppRWpyakNFOWV2VytaNkxsaXdCd3lRZ0F3T0UyYkF3Wnl6NG9xN2J5WXo3MzNITkxGeTFhOUltSVNDQTJOV25JMTM1L3A0aGhXTGtHQUkxREFBQXVzT2dOSStib1VXdGVQdmpnd1lPbHMyYk5lcjd1NzFkYytlUjM0eE5hcDFueHNRRkVEZ0VBdUVCRmhTa3ZMUWo3cmZoWWQ5eHh4OVBIamgwckZ4SHAxUGxidzl0bVg5dmZpbzhMSUxJSUFNQWwxbjBhbExWclQwWDFwWU5mZi8zMWxhKysrdW9LRVpINCtKWXAvUVk4UEMyYUh3OUE5QkFBZ0lzc2ZDM2tyYWtKUitVR1FSVVZGVlYzM0hISDAzVi9IekJvM295WW1DWUowZmhZQUtLUEFBQmM1TWlSc0N4NXJ5WXFYOWZ6NXMxN3ZiQ3dzRVJFcEczMm1IN1pPZGNOaU1iSEFXQU5BZ0J3bWIrOVV5Mmx4NElSM1FVb0xDd3NlZXl4eHhhSmlQaDhjWUVCZytiTmlPVDdCMkE5QWdCd21hb3FVOTVhSEl6bzEvYjk5OS8vWWtWRlJaV0lTUGVlL3pNdWdhditBY2NqQUFBWCt1amphamw4SkJTUnV3TnQzTGh4MzEvKzhwZmxJaUlKQ2EzVGV2VDgzdmhJdkY4QWFoRUFnQXVGUWlKL2U3czZJamZtbVRObnpzdDF0L3Z0bS8rVGIvbDhjWUZJdkY4QWFoRUFnRXQ5dktKR2lvc2I5MU9CR3paczJQdktLNitzRUJGSlNlMlcxYUhqcENzanNqZ0F5aEVBZ0V1Rnd5THZMbW5jelFIbnpwMjc0Tjh2OXRQN3ZzbmM3aGR3RHdJQWNMR1BWMVRMeVpPWGRpbkFuajE3aWw5NzdiVlBSRVJTVW5QYjVyUWJ5NC85QVM1Q0FBQXVWbDBqc3V5RFMzdWRvTi8rOXJkdmgwS2hzSWhJcjk3M1R1SzdmOEJkQ0FEQTVmNjVyRnFDd1lidEFwU1hsMWMrODh3elMwUkVFcE95MHJOenVOOC80RFlFQU9CeUowNlk4bGxCc0VIL3pZc3Z2dmpCOGVQSEswUkV1dVhPdk1Zd3ZEeFdBQzdERnpXZ2dYOTkxTENMQVo5Ly92bWxJaUkrWDN4czV5NVRSMFpsVVFDVUlnQUFEV3phSEpTanBmVzdPL0Rtelp2M3IxcTFhb2VJU0lkT053eUppVW1PaityaUFDaEJBQUFhTU0zYSt3TFV4d3N2dlBEUHVqOTM2alJsZU5RV0JVQXBBZ0RReEpvMUZ3OEEwelROK2ZQbmZ5Z2kwalNsUzV2bTZYMDZSbjFoQUpRZ0FBQk5GQmFGNVl0REYzNGFZT1hLbFR1S2lvcEtSRVE2ZGJweG1DVUxBNkFFQVFCb1pPMjZDKzhDTEZxMDZKUGFQeGxHK3c0VHI3QmdTUUFVSVFBQWpheGJkK0VmQjZ5NzgxOTZldCtPOGJ6a0wrQnFCQUNna1gzN1ExSldkdTZiQW0zZHVyVm81ODZkQjBWRTJ1YU00Y1kvZ01zUkFJQkdURk5rODVaejd3Szg5OTU3QlhWL3pzNjVqZ0FBWEk0QUFEU3phZk81QTJEcDBxWHJSVVNhTnUyVWtaemNycFdsaXdKZ09RSUEwTXk1ZGdCQ29WRDQvZmZmM3lBaTBqcmphejB0WHhRQXl4RUFnR2FPSFRQbFNNbVpQdzVZVUZDd3ArN2UvNjB6aHZSUXNqQUFsaUlBQUEzdDJoVTY0KzhyVjY3Y0xpSmlHRjVQcTlaWGRsZXlLQUNXSWdBQURlM2FmV1lBMU4zN1B6VXRMNXQ3L3dONklBQUFEWjF2QnlBOXZXOG5KUXNDWURrQ0FOQlFZVkZZekM5dkIxQlJVVkcxZGV2V0loRVI3djBQNklNQUFEUlVYVzFLeVpjWEFtN2R1clhJTkd0em9EazdBSUEyQ0FCQVV3Y08xQWJBNXMxYjlvdUkrSHh4Z2FaTk8yVW9YUlFBeXhBQWdLWU9IS3dOZ004L0x5b1ZFV25TdEZPR2lHRW9YUlFBeXhBQWdLWU9IYXE5RVBEQWdlcVFpRWhLU3BjMlNoY0V3RklFQUtDcG82VzFWd0dXbGNYSGlvZzBKUUFBclJBQWdLWktqdFkrQlZCZTBTUkpSS1JKazQ0OC93OW9oQUFBTkhYMHFDbkJvRWhOTUMxWlJDUXhNYk9aNmpVQnNBNEJBR2lxdXRxVW9xS1F4Q2RrTmhjUlNVaXMvUjJBSGdnQVFHT0hpc09TbU5pbW1kY2I4TWZGTlV0V3ZSNEExaUVBQUkwVkh3Nkx6eGNYU0VucG1zV1BBQUo2SVFBQWpSMCtYSHNoWUpPbUhWb3JYZ29BaXhFQWdNYUt2d3lBcE9TY2xvcVhBc0JpQkFDZ3NmS1R0ZmNDU0NZQUFPMFFBSURHcXFwcmYyY0hBTkFQQVFCb3JLcXFkZ2NnTnBDYXBIZ3BBQ3hHQUFBYXF3c0FuejhoVnZGU0FGaU1BQUEwVmxOVCs3dlBGeDlRdXhJQVZpTUFBSWpmbnhDbmVnMEFyRVVBQUJDdk45YXZlZzBBckVVQUFBQ2dJUUlBQUFBTkVRQUFBR2lJQUFBQVFFTUVBQUFBR2lJQUFBRFFFQUVBQUlDR0NBQUFBRFJFQUFBQW9DRUNBQUFBRFJFQUFBQm9pQUFBQUVCREJBQUFBQm9pQUFBQTBCQUJBQUNBaGdnQUFBQTBSQUFBQUtBaEFnQUFBQTBSQUFBQWFJZ0FBQUJBUXdRQUFBQWFJZ0FBQU5BUUFRQUFnSVlJQUFBQU5FUUFBQUNnSVFJQUFBQU5FUUFBQUdpSUFBQUFRRU1FQUFBQUdpSUFBQURRRUFFQUFJQ0dDQUFBQURSRUFBQUFvQ0VDQUFBQURSRUFBQUJvaUFBQUFFQkRCQUFBQUJvaUFBQUEwQkFCQUFDQWhnZ0FBQUEwUkFBQUFLQWhBZ0FBQUEwUkFBQUFhSWdBQUFCQVF3UUFBQUFhaW5nQVBQdUhKa2FrM3ljQUFMcUw5SHhsQndBQUFBMFJBQUFBYUlnQUFBQkFRd1FBQUFBYUlnQUFBTkFRQVFBQWdJWUlBQUFBTkJTVkFPQmVBQUFBUkU0MDVpbzdBQUFBYUlnQUFBQkFRd1FBQUFBYUlnQUFBTkJRMUFLQUN3RUJBR2k4YU0xVGRnQUFBTkFRQVFBQWdJWUlBQUFBTkJUVkFPQTZBQUFBTGwwMDV5ZzdBQUFBYUlnQUFBQkFRd1FBQUFBYWlub0FjQjBBQUFBTkYrMzV5UTRBQUFBYUlnQUFBTkNRSlFIQTB3QUFBTlNmRlhPVEhRQUFBRFJFQUFBQW9DSExBb0NuQVFBQXVEaXI1aVU3QUFBQWFJZ0FBQUJBUTVZR0FFOERBQUJ3ZmxiT1NYWUFBQURRa09VQndDNEFBQUQveWVyNXlBNEFBQUFhSWdBQUFOQ1FrZ0RnYVFBQUFMNmlZaTZ5QXdBQWdJYVVCUUM3QUFBQXFKdUg3QUFBQUtBaHBRSEFMZ0FBUUdjcTV5QTdBQUFBYUVoNUFMQUxBQURRa2VyNXB6d0FBQUNBOVd3UkFLb3JDQUFBSzlsaDd0a2lBQUFBZ0xWc0V3QjJxQ0VBQUtMTkx2UE9OZ0VnWXArREFnQkFOTmhwenRrcUFBQUFnRFZzRndCMnFpTUFBQ0xGYnZQTmRnRUFBQUNpejVZQllMZEtBZ0NnTWV3NDEyd1pBQ0wyUEZnQUFEU1VYZWVaYlFNQUFBQkVqNjBEd0s3VkJBQkFmZGg1anRrNkFFVHNmZkFBQURnZnU4OHYyd2VBaVAwUElnQUFwM1BDM0hKRUFBQUFnTWh5VEFBNG9hWUFBSERLdkhKTUFJZzQ1NkFDQVBUa3BEbmxxQUFRY2RiQkJRRG93Mm56eVhFQkFBQUFHcytSQWVDMHlnSUF1SnNUNTVJakEwREVtUWNiQU9BK1RwMUhqZzBBRWVjZWRBQ0FPemg1RGprNkFFU2NmZkFCQU03bDlQbmorQUFRY2Y1SkFBQTRpeHZtamlzQ1FNUWRKd01BWUg5dW1UZXVDUUFSOTV3VUFJQTl1V25PdUNvQVJOeDFjZ0FBOXVHMitlSzZBQkJ4MzBrQ0FLamx4cm5peWdBUWNlZkpBZ0JZejYzenhMVUJJT0xla3dZQXNJYWI1NGlyQTBERTNTY1BBQkE5YnA4ZnJnOEFFZmVmUkFCQVpPa3dON1FJQUJFOVRpWUFvUEYwbVJmYUJJQ0lQaWNWQUhCcGRKb1RXZ1dBaUY0bkZ3QlFmN3JOQjYzK1o4OTI2OHpqcHVvMUFBRFUwbTN3MTlGdUIrQjB1cDUwQUVBdG5lZUExZ0Vnb3ZmSkJ3Q2Q2Zjc0ci9YLy9ObDRTZ0FBM0UvM3dWOUgreDJBMC9GSkFRRHV4dVA4VndpQXMvREpBUUR1eE9QN21UZ1lGOEJUQWdEZ2ZBeitjMk1INEFMNHBBRUFaK054L1B3NE1QWEViZ0FBT0FlRC8rSTRRQTFFQ0FDQWZUSDQ2NCtuQUJxSVR5NEFzQ2Nlbnh1R2c5VUk3QVlBZ0hvTS9rdkRRWXNBUWdBQXJNZmdieHdPWGdRUkFnQVFmUXoreU9BZ1JnRWhBQUNSeCtDUExBNW1GQkVDQU5CNERQN280S0JhaEJnQWdQcGo2RWNmQjloaWhBQUFuQitEM3pvY2FJV0lBUUJnNkt2Q1FiY0pZZ0NBVGhqNjZuRUNiSWdZQU9CR0RIMTc0V1E0QUVFQXdJa1krUGJHeVhFZ2dnQ0FIVEh3bllXVDVSSkVBUUFyTWV5ZGp4T29DUUlCUUVNdzRBRUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFnRXY4UC94ZktLV3M4MUVuQUFBQUFFbEZUa1N1UW1DQyIsICJzaXplcyI6ICI1MTJ4NTEyIiwgInR5cGUiOiAiaW1hZ2UvcG5nIiwgInB1cnBvc2UiOiAiYW55IG1hc2thYmxlIn0KICBdCn0=');
+    const manifestBlob = new Blob([manifestData], {type:'application/manifest+json'});
+    document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
+
+    // Set apple touch icon
+    const iconData = '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';
+    if(iconData) document.getElementById('apple-icon').href = 'data:image/png;base64,' + iconData;
+
+    // Service Worker: only registers when properly hosted (Netlify, GitHub Pages, etc.)
+    // The app still works fully without it — in-app notifications handle reminders.
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => {
+          console.log('SW registered');
+          setTimeout(() => {
+            try {
+              const events = JSON.parse(localStorage.getItem('lifeos_events') || '[]');
+              const now = Date.now();
+              events.forEach(ev => {
+                if (ev.reminded) return;
+                const t = new Date(ev.datetime).getTime();
+                const delay = (t - 15 * 60 * 1000) - now;
+                if (delay > 0 && delay < 86400000 && reg.active) {
+                  reg.active.postMessage({
+                    type: 'SCHEDULE_NOTIFICATION',
+                    title: `⏰ ${ev.title}`,
+                    body: 'Starting in 15 minutes',
+                    delay,
+                    tag: `ev-${ev.id}`
+                  });
+                }
+              });
+            } catch(e) {}
+          }, 2000);
+        })
+        .catch(() => {}); // Silent fail — in-app reminders still work
+    }
+
+    // iOS install banner
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone;
+    if(isIOS && !isStandalone) {
+      setTimeout(() => document.getElementById('ios-banner').classList.add('show'), 4000);
+    }
+
+    // Android/Desktop install
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      // You can add a custom install button here if desired
+    });
+  </script>
+
+  <!-- Preload hints so browser fetches these early -->
+  <link rel="preload" href="https://unpkg.com/react@18/umd/react.production.min.js" as="script" crossorigin/>
+  <link rel="preload" href="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" as="script" crossorigin/>
+  <link rel="preload" href="https://unpkg.com/@babel/standalone/babel.min.js" as="script"/>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback, createContext, useContext } = React;
+
+// ── Theme Context ─────────────────────────────────────────────────────────────
+const ThemeCtx = createContext(null);
+function useTheme(){ return useContext(ThemeCtx); }
+
+const THEMES = {
+  indigo: { name:"Indigo Night",  primary:"#818cf8", secondary:"#6366f1", accent:"#f472b6", bg:"#0a0a0f", text:"#f0f0f0", grad:"linear-gradient(135deg,#6366f1,#818cf8)" },
+  emerald:{ name:"Emerald Dark",  primary:"#34d399", secondary:"#059669", accent:"#fbbf24", bg:"#0a0f0c", text:"#f0f0f0", grad:"linear-gradient(135deg,#059669,#34d399)" },
+  rose:   { name:"Rose Gold",     primary:"#fb7185", secondary:"#e11d48", accent:"#fbbf24", bg:"#0f0a0c", text:"#f0f0f0", grad:"linear-gradient(135deg,#e11d48,#fb7185)" },
+  amber:  { name:"Amber Dusk",    primary:"#fbbf24", secondary:"#d97706", accent:"#818cf8", bg:"#0f0d0a", text:"#f0f0f0", grad:"linear-gradient(135deg,#d97706,#fbbf24)" },
+  cyan:   { name:"Cyan Frost",    primary:"#22d3ee", secondary:"#0891b2", accent:"#f472b6", bg:"#0a0d0f", text:"#f0f0f0", grad:"linear-gradient(135deg,#0891b2,#22d3ee)" },
+  light:  { name:"Clean Light",   primary:"#6366f1", secondary:"#4f46e5", accent:"#f472b6", bg:"#f1f5f9", text:"#1e1e2e", grad:"linear-gradient(135deg,#4f46e5,#6366f1)" },
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const DAYS   = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const today  = new Date();
+
+function sameDay(a,b){ return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function fmtTime(d){ if(!d)return""; const h=d.getHours(),m=d.getMinutes(); return `${h%12||12}:${String(m).padStart(2,"0")} ${h<12?"AM":"PM"}`; }
+
+const CLAUDE_SYSTEM = `You are ARIA, an AI life assistant embedded in a personal productivity app called LifeOS. You help with:
+- Parsing voice/text input into calendar events and tasks (return JSON when asked)
+- Suggesting healthy recipes with macros
+- Workout planning and running accountability
+- Daily planning and habit tracking
+- Answering general questions conversationally
+
+When the user wants to add an event/task, extract: title, date, time, category (work/health/personal/food), and notes.
+Return ONLY valid JSON like: {"action":"add_event","title":"...","date":"YYYY-MM-DD","time":"HH:MM","category":"...","notes":"..."}
+
+For recipes return: {"action":"recipe","name":"...","calories":0,"protein":0,"carbs":0,"fat":0,"ingredients":["..."],"steps":["..."]}
+
+For general conversation, respond naturally and helpfully. Keep it concise and friendly.`;
+
+async function callClaude(messages, onChunk){
+  const res = await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000, system:CLAUDE_SYSTEM, stream:true, messages })
+  });
+  if(!res.ok) throw new Error("API error");
+  const reader=res.body.getReader(), dec=new TextDecoder();
+  let full="";
+  while(true){
+    const{done,value}=await reader.read();
+    if(done)break;
+    for(const line of dec.decode(value).split("\n")){
+      if(line.startsWith("data: ")){
+        const d=line.slice(6);
+        if(d==="[DONE]")break;
+        try{ const j=JSON.parse(d); if(j.type==="content_block_delta"&&j.delta?.text){ full+=j.delta.text; onChunk&&onChunk(full); } }catch{}
+      }
+    }
+  }
+  return full;
+}
+
+function useLocalStorage(key,init){
+  const [val,setVal]=useState(()=>{ try{ const s=localStorage.getItem(key); return s?JSON.parse(s):init; }catch{ return init; }});
+  useEffect(()=>{ try{ localStorage.setItem(key,JSON.stringify(val)); }catch{} },[key,val]);
+  return[val,setVal];
+}
+
+// ── Shared UI ─────────────────────────────────────────────────────────────────
+function Modal({onClose,title,children}){
+  const t=useTheme();
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.8)",backdropFilter:"blur(8px)",zIndex:200,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
+      <div style={{background:t.bg==="#f1f5f9"?"#fff":"#141420",borderRadius:"24px 24px 0 0",padding:"24px 20px 40px",width:"100%",maxWidth:430,maxHeight:"90vh",overflowY:"auto",border:"1px solid rgba(255,255,255,0.1)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h3 style={{margin:0,fontSize:18,fontWeight:700,color:t.text}}>{title}</h3>
+          <button onClick={onClose} style={{background:"rgba(128,128,128,0.2)",border:"none",color:t.text,borderRadius:"50%",width:30,height:30,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+function Input({placeholder,value,onChange,type,autoFocus}){
+  const t=useTheme();
+  return <input type={type||"text"} placeholder={placeholder} value={value} onChange={e=>onChange(e.target.value)} autoFocus={autoFocus} style={{width:"100%",background:"rgba(128,128,128,0.1)",border:"1px solid rgba(128,128,128,0.2)",borderRadius:12,padding:"12px 14px",color:t.text,fontSize:14,marginBottom:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box"}}/>;
+}
+function Select({value,onChange,options}){
+  const t=useTheme();
+  return(
+    <select value={value} onChange={e=>onChange(e.target.value)} style={{width:"100%",background:t.bg==="#f1f5f9"?"#fff":"rgba(128,128,128,0.1)",border:"1px solid rgba(128,128,128,0.2)",borderRadius:12,padding:"12px 14px",color:t.text,fontSize:14,marginBottom:12,outline:"none",fontFamily:"inherit",boxSizing:"border-box",appearance:"none"}}>
+      {options.map(([v,l])=><option key={v} value={v} style={{background:t.bg==="#f1f5f9"?"#fff":"#1a1a2e",color:t.text}}>{l}</option>)}
+    </select>
+  );
+}
+function Btn({onClick,children,loading}){
+  const t=useTheme();
+  return <button onClick={onClick} disabled={!!loading} style={{width:"100%",background:t.grad,border:"none",color:"#fff",borderRadius:12,padding:"14px",fontSize:15,fontWeight:700,cursor:loading?"not-allowed":"pointer",marginTop:4,opacity:loading?0.7:1,transition:"all 0.2s"}}>{children}</button>;
+}
+function Section({title,action,onAction,children}){
+  const t=useTheme();
+  return(
+    <div style={{marginBottom:24}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <h3 style={{margin:0,fontSize:15,fontWeight:700,color:t.text}}>{title}</h3>
+        {action&&<button onClick={onAction} style={{background:"none",border:"none",color:t.primary,fontSize:12,fontWeight:600,cursor:"pointer",padding:0}}>{action} →</button>}
+      </div>
+      {children}
+    </div>
+  );
+}
+function Empty({text,onTap}){
+  return <div onClick={onTap} style={{textAlign:"center",padding:"24px 16px",color:"rgba(128,128,128,0.6)",fontSize:13,cursor:onTap?"pointer":"default",borderRadius:12,border:"1px dashed rgba(128,128,128,0.2)"}}>{text}</div>;
+}
+function EventPill({ev}){
+  const t=useTheme();
+  const catColors={work:t.primary,health:"#34d399",personal:t.accent,food:"#fbbf24"};
+  const c=catColors[ev.category]||t.primary;
+  return(
+    <div style={{display:"flex",gap:10,padding:"10px 12px",background:"rgba(128,128,128,0.06)",borderRadius:12,marginBottom:8,borderLeft:`3px solid ${c}`}}>
+      <div style={{fontSize:12,color:c,fontWeight:700,flexShrink:0,marginTop:1}}>{fmtTime(new Date(ev.datetime))}</div>
+      <div style={{fontSize:14,color:t.text}}>{ev.title}</div>
+    </div>
+  );
+}
+
+// ── Bottom Nav ────────────────────────────────────────────────────────────────
+function BottomNav({tab,setTab,onSettings}){
+  const t=useTheme();
+  const items=[{id:"home",icon:"⬡",label:"Home"},{id:"calendar",icon:"📅",label:"Calendar"},{id:"tasks",icon:"✓",label:"Tasks"},{id:"health",icon:"♥",label:"Health"},{id:"ai",icon:"✦",label:"ARIA"}];
+  return(
+    <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:t.bg==="#f1f5f9"?"rgba(241,245,249,0.95)":"rgba(10,10,15,0.95)",backdropFilter:"blur(20px)",borderTop:`1px solid rgba(128,128,128,0.12)`,display:"flex",justifyContent:"space-around",alignItems:"flex-start",padding:"8px 0 20px",zIndex:100}}>
+      {items.map(it=>(
+        <button key={it.id} onClick={()=>setTab(it.id)} style={{background:"none",border:"none",color:tab===it.id?t.primary:"rgba(128,128,128,0.5)",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",padding:"4px 10px",transition:"all 0.2s"}}>
+          <span style={{fontSize:tab===it.id?22:20,transition:"all 0.2s",filter:tab===it.id?`drop-shadow(0 0 8px ${t.primary}cc)`:"none"}}>{it.icon}</span>
+          <span style={{fontSize:10,fontWeight:tab===it.id?600:400,letterSpacing:"0.5px",color:tab===it.id?t.primary:"rgba(128,128,128,0.5)"}}>{it.label}</span>
+          {tab===it.id&&<div style={{width:4,height:4,borderRadius:"50%",background:t.primary,marginTop:-2}}/>}
+        </button>
+      ))}
+      <button onClick={onSettings} style={{background:"none",border:"none",color:"rgba(128,128,128,0.5)",display:"flex",flexDirection:"column",alignItems:"center",gap:3,cursor:"pointer",padding:"4px 10px"}}>
+        <span style={{fontSize:20}}>⚙️</span>
+        <span style={{fontSize:10,letterSpacing:"0.5px"}}>Settings</span>
+      </button>
+    </div>
+  );
+}
+
+// ── Settings Panel ────────────────────────────────────────────────────────────
+function SettingsPanel({themeName,setThemeName,userName,setUserName,onClose}){
+  const t=useTheme();
+  const [nameInput,setNameInput]=useState(userName);
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",backdropFilter:"blur(12px)",zIndex:300,display:"flex",flexDirection:"column",justifyContent:"flex-end"}}>
+      <div style={{background:t.bg==="#f1f5f9"?"#fff":"#141420",borderRadius:"24px 24px 0 0",padding:"24px 20px 48px",maxHeight:"88vh",overflowY:"auto",border:"1px solid rgba(128,128,128,0.15)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <h2 style={{margin:0,fontSize:22,fontWeight:700,color:t.text}}>Settings</h2>
+          <button onClick={onClose} style={{background:"rgba(128,128,128,0.15)",border:"none",color:t.text,borderRadius:"50%",width:32,height:32,fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+        <div style={{marginBottom:28}}>
+          <div style={{fontSize:12,fontWeight:700,color:"rgba(128,128,128,0.6)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:12}}>Your Name</div>
+          <div style={{display:"flex",gap:10}}>
+            <input value={nameInput} onChange={e=>setNameInput(e.target.value)} placeholder="What should ARIA call you?" style={{flex:1,background:"rgba(128,128,128,0.1)",border:"1px solid rgba(128,128,128,0.2)",borderRadius:12,padding:"12px 14px",color:t.text,fontSize:14,outline:"none",fontFamily:"inherit"}}/>
+            <button onClick={()=>setUserName(nameInput)} style={{background:t.grad,border:"none",color:"#fff",borderRadius:12,padding:"12px 16px",fontSize:14,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap"}}>Save</button>
+          </div>
+          {userName&&<div style={{fontSize:12,color:t.primary,marginTop:8}}>👋 ARIA will call you "{userName}"</div>}
+        </div>
+        <div>
+          <div style={{fontSize:12,fontWeight:700,color:"rgba(128,128,128,0.6)",textTransform:"uppercase",letterSpacing:"1px",marginBottom:14}}>Color Theme</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {Object.entries(THEMES).map(([key,th])=>(
+              <button key={key} onClick={()=>setThemeName(key)} style={{background:key===themeName?"rgba(128,128,128,0.15)":"rgba(128,128,128,0.06)",border:`2px solid ${key===themeName?th.primary:"rgba(128,128,128,0.12)"}`,borderRadius:14,padding:"14px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                <div style={{display:"flex",gap:6,marginBottom:8}}>
+                  {[th.primary,th.secondary,th.accent].map((c,i)=><div key={i} style={{width:18,height:18,borderRadius:"50%",background:c}}/>)}
+                </div>
+                <div style={{fontSize:13,fontWeight:600,color:key===themeName?th.primary:t.text}}>{th.name}</div>
+                {key===themeName&&<div style={{fontSize:11,color:th.primary,marginTop:4}}>✓ Active</div>}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Home Tab ──────────────────────────────────────────────────────────────────
+function HomeTab({events,tasks,habits,toggleHabit,toggleTask,setTab,setSelectedDay,userName}){
+  const t=useTheme();
+  const now=new Date();
+  const greet=now.getHours()<12?"Good morning 🌅":now.getHours()<17?"Good afternoon ☀️":"Good evening 🌙";
+  const todayEvents=events.filter(e=>sameDay(new Date(e.datetime),now)).sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));
+  const pendingTasks=tasks.filter(t=>!t.done).slice(0,4);
+  const todayStr=now.toDateString();
+  return(
+    <div style={{padding:"60px 20px 20px"}}>
+      <div style={{position:"fixed",top:-100,right:-100,width:400,height:400,borderRadius:"50%",background:`radial-gradient(circle,${t.primary}22 0%,transparent 70%)`,pointerEvents:"none",zIndex:0}}/>
+      <div style={{position:"relative",zIndex:1}}>
+        <p style={{color:"rgba(128,128,128,0.6)",fontSize:14,margin:"0 0 4px"}}>{now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"})}</p>
+        <h1 style={{margin:"0 0 28px",fontSize:28,fontWeight:700,background:`linear-gradient(135deg,${t.text},${t.primary})`,WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>{greet}{userName?`, ${userName}`:""}</h1>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10,marginBottom:24}}>
+          {[{label:"Today",value:todayEvents.length,unit:"events",color:t.primary},{label:"Tasks",value:pendingTasks.length,unit:"pending",color:t.accent},{label:"Habits",value:`${habits.filter(h=>h.completedDates.includes(todayStr)).length}/${habits.length}`,unit:"done",color:"#34d399"}].map(s=>(
+            <div key={s.label} style={{background:"rgba(128,128,128,0.06)",borderRadius:16,padding:"14px 12px",border:"1px solid rgba(128,128,128,0.1)"}}>
+              <div style={{fontSize:22,fontWeight:700,color:s.color}}>{s.value}</div>
+              <div style={{fontSize:11,color:"rgba(128,128,128,0.6)",marginTop:2}}>{s.unit}</div>
+              <div style={{fontSize:10,color:"rgba(128,128,128,0.4)"}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+        <Section title="Today's Schedule" action="See all" onAction={()=>{setSelectedDay(new Date());setTab("calendar")}}>
+          {todayEvents.length===0?<Empty text="Nothing scheduled. Tap to add events." onTap={()=>{setSelectedDay(new Date());setTab("calendar")}}/>:todayEvents.map(ev=><EventPill key={ev.id} ev={ev}/>)}
+        </Section>
+        <Section title="Daily Habits" action="See all" onAction={()=>setTab("health")}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+            {habits.map(h=>{
+              const done=h.completedDates.includes(todayStr);
+              return(
+                <button key={h.id} onClick={()=>toggleHabit(h.id)} style={{background:done?`${t.primary}18`:"rgba(128,128,128,0.05)",border:`1px solid ${done?`${t.primary}55`:"rgba(128,128,128,0.1)"}`,borderRadius:14,padding:"12px",cursor:"pointer",textAlign:"left",transition:"all 0.2s"}}>
+                  <div style={{fontSize:22}}>{h.icon}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:done?t.primary:t.text,marginTop:6}}>{h.name}</div>
+                  <div style={{fontSize:11,color:"rgba(128,128,128,0.5)",marginTop:2}}>🔥 {h.streak} day streak</div>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+        <Section title="Up Next" action="All tasks" onAction={()=>setTab("tasks")}>
+          {pendingTasks.length===0?<Empty text="All caught up! 🎉"/>:pendingTasks.map(task=>(
+            <div key={task.id} onClick={()=>toggleTask(task.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 0",borderBottom:"1px solid rgba(128,128,128,0.08)",cursor:"pointer"}}>
+              <div style={{width:20,height:20,borderRadius:"50%",border:`2px solid ${t.primary}99`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {task.done&&<div style={{width:10,height:10,borderRadius:"50%",background:t.primary}}/>}
+              </div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,color:t.text}}>{task.title}</div>
+                {task.due&&<div style={{fontSize:11,color:"rgba(128,128,128,0.5)",marginTop:2}}>{task.due}</div>}
+              </div>
+              {task.priority==="high"&&<span style={{fontSize:10,background:"rgba(239,68,68,0.15)",color:"#f87171",padding:"2px 8px",borderRadius:20,flexShrink:0}}>HIGH</span>}
+            </div>
+          ))}
+        </Section>
+      </div>
+    </div>
+  );
+}
+
+// ── Calendar Tab ──────────────────────────────────────────────────────────────
+function CalendarTab({events,selectedDay,setSelectedDay,addEvent,showAdd,setShowAdd}){
+  const t=useTheme();
+  const [viewMonth,setViewMonth]=useState(new Date(selectedDay));
+  const [newEv,setNewEv]=useState({title:"",time:"09:00",category:"personal",notes:""});
+  const firstDay=new Date(viewMonth.getFullYear(),viewMonth.getMonth(),1);
+  const daysInMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate();
+  const cells=[];
+  for(let i=0;i<firstDay.getDay();i++)cells.push(null);
+  for(let d=1;d<=daysInMonth;d++)cells.push(new Date(viewMonth.getFullYear(),viewMonth.getMonth(),d));
+  const dayEvents=events.filter(e=>sameDay(new Date(e.datetime),selectedDay)).sort((a,b)=>new Date(a.datetime)-new Date(b.datetime));
+  const catColors={work:t.primary,health:"#34d399",personal:t.accent,food:"#fbbf24"};
+  function submitEvent(){
+    if(!newEv.title.trim())return;
+    const[h,m]=newEv.time.split(":").map(Number);
+    const dt=new Date(selectedDay); dt.setHours(h,m,0,0);
+    addEvent({title:newEv.title,datetime:dt.toISOString(),category:newEv.category,notes:newEv.notes});
+    setNewEv({title:"",time:"09:00",category:"personal",notes:""});
+    setShowAdd(false);
+  }
+  return(
+    <div style={{padding:"60px 20px 20px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+        <h2 style={{margin:0,fontSize:24,fontWeight:700,color:t.text}}>{MONTHS[viewMonth.getMonth()]} {viewMonth.getFullYear()}</h2>
+        <div style={{display:"flex",gap:8}}>
+          {["‹","›"].map((ch,i)=>(
+            <button key={i} onClick={()=>setViewMonth(m=>{const n=new Date(m);n.setMonth(n.getMonth()+(i?1:-1));return n;})} style={{background:"rgba(128,128,128,0.1)",border:"none",color:t.text,borderRadius:10,width:32,height:32,fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{ch}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:8}}>
+        {DAYS.map(d=><div key={d} style={{textAlign:"center",fontSize:11,color:"rgba(128,128,128,0.4)",fontWeight:600,padding:"4px 0"}}>{d}</div>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:2,marginBottom:24}}>
+        {cells.map((d,i)=>{
+          if(!d)return<div key={i}/>;
+          const isToday=sameDay(d,today),isSel=sameDay(d,selectedDay);
+          const hasEv=events.some(e=>sameDay(new Date(e.datetime),d));
+          return(
+            <button key={i} onClick={()=>setSelectedDay(d)} style={{background:isSel?t.primary:isToday?`${t.primary}33`:"transparent",border:"none",borderRadius:10,padding:"8px 4px",cursor:"pointer",color:isSel?"#fff":isToday?t.primary:t.text,fontWeight:isSel||isToday?700:400,fontSize:14,display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"all 0.15s"}}>
+              {d.getDate()}
+              {hasEv&&<div style={{width:4,height:4,borderRadius:"50%",background:isSel?"rgba(255,255,255,0.8)":t.primary}}/>}
+            </button>
+          );
+        })}
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+        <h3 style={{margin:0,fontSize:16,fontWeight:600,color:t.text}}>{sameDay(selectedDay,today)?"Today":selectedDay.toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}</h3>
+        <button onClick={()=>setShowAdd(true)} style={{background:t.grad,border:"none",color:"#fff",borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Add</button>
+      </div>
+      {dayEvents.length===0?<Empty text="No events. Tap + Add to create one."/>:dayEvents.map(ev=>(
+        <div key={ev.id} style={{display:"flex",gap:12,padding:"12px 14px",background:"rgba(128,128,128,0.06)",borderRadius:14,marginBottom:8,borderLeft:`3px solid ${catColors[ev.category]||t.primary}`}}>
+          <div>
+            <div style={{fontSize:12,color:catColors[ev.category]||t.primary,fontWeight:600,textTransform:"uppercase"}}>{fmtTime(new Date(ev.datetime))}</div>
+            <div style={{fontSize:15,fontWeight:600,marginTop:2,color:t.text}}>{ev.title}</div>
+            {ev.notes&&<div style={{fontSize:12,color:"rgba(128,128,128,0.5)",marginTop:3}}>{ev.notes}</div>}
+          </div>
+        </div>
+      ))}
+      {showAdd&&(
+        <Modal onClose={()=>setShowAdd(false)} title="New Event">
+          <Input placeholder="Event title" value={newEv.title} onChange={v=>setNewEv(p=>({...p,title:v}))} autoFocus={true}/>
+          <Input type="time" value={newEv.time} onChange={v=>setNewEv(p=>({...p,time:v}))}/>
+          <Select value={newEv.category} onChange={v=>setNewEv(p=>({...p,category:v}))} options={[["personal","👤 Personal"],["work","💼 Work"],["health","💪 Health"],["food","🍎 Food"]]}/>
+          <Input placeholder="Notes (optional)" value={newEv.notes} onChange={v=>setNewEv(p=>({...p,notes:v}))}/>
+          <Btn onClick={submitEvent}>Add Event</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── Tasks Tab ─────────────────────────────────────────────────────────────────
+function TasksTab({tasks,addTask,toggleTask}){
+  const t=useTheme();
+  const [showAdd,setShowAdd]=useState(false);
+  const [newTask,setNewTask]=useState({title:"",due:"",priority:"medium",category:"personal"});
+  const [filter,setFilter]=useState("all");
+  const filtered=tasks.filter(tk=>filter==="all"||tk.category===filter);
+  const prioColor={high:"#f87171",medium:"#fbbf24",low:"#34d399"};
+  function submit(){ if(!newTask.title.trim())return; addTask(newTask); setNewTask({title:"",due:"",priority:"medium",category:"personal"}); setShowAdd(false); }
+  return(
+    <div style={{padding:"60px 20px 20px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+        <h2 style={{margin:0,fontSize:24,fontWeight:700,color:t.text}}>Tasks</h2>
+        <button onClick={()=>setShowAdd(true)} style={{background:t.grad,border:"none",color:"#fff",borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Add</button>
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:20,overflowX:"auto",paddingBottom:4}}>
+        {["all","work","personal","health","food"].map(c=>(
+          <button key={c} onClick={()=>setFilter(c)} style={{background:filter===c?t.primary:"rgba(128,128,128,0.1)",border:"none",color:filter===c?"#fff":"rgba(128,128,128,0.6)",borderRadius:20,padding:"6px 14px",fontSize:12,fontWeight:600,cursor:"pointer",whiteSpace:"nowrap",transition:"all 0.2s",textTransform:"capitalize"}}>{c}</button>
+        ))}
+      </div>
+      {filtered.filter(tk=>!tk.done).length===0&&filtered.filter(tk=>tk.done).length===0&&<Empty text="No tasks yet. Add your first task!"/>}
+      {filtered.filter(tk=>!tk.done).map(tk=>(
+        <div key={tk.id} onClick={()=>toggleTask(tk.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:"rgba(128,128,128,0.05)",borderRadius:14,marginBottom:8,cursor:"pointer"}}>
+          <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid rgba(128,128,128,0.3)`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}/>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontSize:14,color:t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{tk.title}</div>
+            {tk.due&&<div style={{fontSize:11,color:"rgba(128,128,128,0.5)",marginTop:2}}>{tk.due}</div>}
+          </div>
+          <div style={{fontSize:10,color:prioColor[tk.priority],padding:"2px 8px",borderRadius:20,fontWeight:600,textTransform:"uppercase",background:`${prioColor[tk.priority]}22`,flexShrink:0}}>{tk.priority}</div>
+        </div>
+      ))}
+      {filtered.filter(tk=>tk.done).length>0&&(
+        <>
+          <div style={{fontSize:12,color:"rgba(128,128,128,0.4)",marginTop:16,marginBottom:10,fontWeight:600,letterSpacing:"1px",textTransform:"uppercase"}}>Completed</div>
+          {filtered.filter(tk=>tk.done).map(tk=>(
+            <div key={tk.id} onClick={()=>toggleTask(tk.id)} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:"rgba(128,128,128,0.04)",borderRadius:14,marginBottom:8,cursor:"pointer",opacity:0.5}}>
+              <div style={{width:22,height:22,borderRadius:"50%",border:`2px solid #34d399`,background:"rgba(52,211,153,0.2)",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><span style={{fontSize:12,color:"#34d399"}}>✓</span></div>
+              <div style={{fontSize:14,color:t.text,textDecoration:"line-through"}}>{tk.title}</div>
+            </div>
+          ))}
+        </>
+      )}
+      {showAdd&&(
+        <Modal onClose={()=>setShowAdd(false)} title="New Task">
+          <Input placeholder="Task title" value={newTask.title} onChange={v=>setNewTask(p=>({...p,title:v}))} autoFocus={true}/>
+          <Input placeholder="Due date (e.g. tomorrow, Monday)" value={newTask.due} onChange={v=>setNewTask(p=>({...p,due:v}))}/>
+          <Select value={newTask.priority} onChange={v=>setNewTask(p=>({...p,priority:v}))} options={[["high","🔴 High"],["medium","🟡 Medium"],["low","🟢 Low"]]}/>
+          <Select value={newTask.category} onChange={v=>setNewTask(p=>({...p,category:v}))} options={[["personal","👤 Personal"],["work","💼 Work"],["health","💪 Health"],["food","🍎 Food"]]}/>
+          <Btn onClick={submit}>Add Task</Btn>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+// ── Health Tab ────────────────────────────────────────────────────────────────
+function HealthTab({habits,toggleHabit,savedRecipes,setSavedRecipes}){
+  const t=useTheme();
+  const [subTab,setSubTab]=useState("habits");
+  const [showRecipeModal,setShowRecipeModal]=useState(false);
+  const [recipeQuery,setRecipeQuery]=useState("");
+  const [loadingRecipe,setLoadingRecipe]=useState(false);
+  const [currentRecipe,setCurrentRecipe]=useState(null);
+  const todayStr=new Date().toDateString();
+
+  async function fetchRecipe(){
+    if(!recipeQuery.trim())return;
+    setLoadingRecipe(true);
+    try{
+      let full="";
+      await callClaude([{role:"user",content:`Give me a healthy recipe for: ${recipeQuery}. Return ONLY the JSON recipe format specified.`}],tx=>{full=tx;});
+      const match=full.match(/\{[\s\S]*\}/);
+      if(match){ const r=JSON.parse(match[0]); if(r.action==="recipe") setCurrentRecipe(r); }
+    }catch(e){}
+    setLoadingRecipe(false);
+  }
+
+  return(
+    <div style={{padding:"60px 20px 20px"}}>
+      <h2 style={{margin:"0 0 20px",fontSize:24,fontWeight:700,color:t.text}}>Health</h2>
+      <div style={{display:"flex",gap:8,marginBottom:24,background:"rgba(128,128,128,0.06)",borderRadius:14,padding:4}}>
+        {[["habits","Habits"],["nutrition","Nutrition"],["runs","Running"]].map(([id,label])=>(
+          <button key={id} onClick={()=>setSubTab(id)} style={{flex:1,background:subTab===id?`${t.primary}33`:"transparent",border:`1px solid ${subTab===id?`${t.primary}66`:"transparent"}`,color:subTab===id?t.primary:"rgba(128,128,128,0.5)",borderRadius:10,padding:"8px 4px",fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>{label}</button>
+        ))}
+      </div>
+
+      {subTab==="habits"&&(
+        <>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+            {habits.map(h=>{
+              const done=h.completedDates.includes(todayStr);
+              return(
+                <button key={h.id} onClick={()=>toggleHabit(h.id)} style={{background:done?`${t.primary}18`:"rgba(128,128,128,0.05)",border:`1px solid ${done?`${t.primary}55`:"rgba(128,128,128,0.1)"}`,borderRadius:16,padding:"16px",cursor:"pointer",textAlign:"left",transition:"all 0.25s"}}>
+                  <div style={{fontSize:28,marginBottom:8}}>{h.icon}</div>
+                  <div style={{fontSize:13,fontWeight:600,color:done?t.primary:t.text}}>{h.name}</div>
+                  <div style={{height:3,background:"rgba(128,128,128,0.1)",borderRadius:2,margin:"8px 0 4px"}}>
+                    <div style={{width:done?"100%":"0%",height:"100%",background:t.primary,borderRadius:2,transition:"width 0.4s"}}/>
+                  </div>
+                  <div style={{fontSize:11,color:"rgba(128,128,128,0.5)"}}>🔥 {h.streak}-day streak</div>
+                  {done&&<div style={{fontSize:11,color:t.primary,marginTop:4,fontWeight:600}}>✓ Done today</div>}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{marginTop:24,background:"rgba(128,128,128,0.05)",borderRadius:16,padding:"16px"}}>
+            <div style={{fontSize:12,fontWeight:600,color:"rgba(128,128,128,0.5)",marginBottom:14,textTransform:"uppercase",letterSpacing:"0.5px"}}>This Week</div>
+            {habits.map(h=>{
+              const days=[...Array(7)].map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-6+i); return d.toDateString(); });
+              return(
+                <div key={h.id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
+                  <span style={{fontSize:16,width:24}}>{h.icon}</span>
+                  <div style={{display:"flex",gap:4,flex:1}}>
+                    {days.map((d,i)=><div key={i} style={{flex:1,height:24,borderRadius:6,background:h.completedDates.includes(d)?`${t.primary}66`:"rgba(128,128,128,0.1)"}}/>)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {subTab==="nutrition"&&(
+        <>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+            <h3 style={{margin:0,fontSize:16,fontWeight:600,color:t.text}}>Recipes</h3>
+            <button onClick={()=>setShowRecipeModal(true)} style={{background:t.grad,border:"none",color:"#fff",borderRadius:20,padding:"6px 14px",fontSize:13,fontWeight:600,cursor:"pointer"}}>+ Find Recipe</button>
+          </div>
+          {savedRecipes.length===0&&<Empty text="Ask ARIA for healthy recipes, or tap + Find Recipe."/>}
+          {savedRecipes.map((r,i)=>(
+            <div key={i} style={{background:"rgba(128,128,128,0.05)",borderRadius:16,padding:"16px",marginBottom:12,border:"1px solid rgba(128,128,128,0.1)"}}>
+              <div style={{fontWeight:700,fontSize:16,marginBottom:8,color:t.text}}>{r.name}</div>
+              <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
+                {[["Cals",r.calories,"#fff"],["Protein",`${r.protein}g`,t.primary],["Carbs",`${r.carbs}g`,"#fbbf24"],["Fat",`${r.fat}g`,t.accent]].map(([l,v,c])=>(
+                  <div key={l} style={{background:"rgba(128,128,128,0.08)",borderRadius:10,padding:"6px 10px",textAlign:"center"}}>
+                    <div style={{fontSize:13,fontWeight:700,color:c}}>{v}</div>
+                    <div style={{fontSize:10,color:"rgba(128,128,128,0.5)",marginTop:1}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+              {r.ingredients?.map((ing,j)=><div key={j} style={{fontSize:13,color:"rgba(128,128,128,0.7)",marginBottom:3}}>• {ing}</div>)}
+            </div>
+          ))}
+          {showRecipeModal&&(
+            <Modal onClose={()=>{setShowRecipeModal(false);setCurrentRecipe(null);setRecipeQuery("");}} title="Find a Recipe">
+              {!currentRecipe?(
+                <>
+                  <Input placeholder="e.g. high protein breakfast, quick lunch..." value={recipeQuery} onChange={setRecipeQuery} autoFocus={true}/>
+                  <Btn onClick={fetchRecipe} loading={loadingRecipe}>{loadingRecipe?"Finding recipe...":"Generate Recipe"}</Btn>
+                </>
+              ):(
+                <>
+                  <div style={{background:"rgba(128,128,128,0.05)",borderRadius:12,padding:"14px",marginBottom:12}}>
+                    <div style={{fontWeight:700,fontSize:16,marginBottom:10,color:t.text}}>{currentRecipe.name}</div>
+                    <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap"}}>
+                      {[["Cals",currentRecipe.calories,"#fff"],["Protein",`${currentRecipe.protein}g`,t.primary],["Carbs",`${currentRecipe.carbs}g`,"#fbbf24"],["Fat",`${currentRecipe.fat}g`,t.accent]].map(([l,v,c])=>(
+                        <div key={l} style={{background:"rgba(128,128,128,0.08)",borderRadius:10,padding:"6px 10px",textAlign:"center"}}>
+                          <div style={{fontSize:13,fontWeight:700,color:c}}>{v}</div>
+                          <div style={{fontSize:10,color:"rgba(128,128,128,0.5)",marginTop:1}}>{l}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{fontSize:12,color:"rgba(128,128,128,0.5)",marginBottom:4,fontWeight:600,textTransform:"uppercase"}}>Ingredients</div>
+                    {currentRecipe.ingredients?.map((ing,i)=><div key={i} style={{fontSize:13,color:"rgba(128,128,128,0.7)",marginBottom:3}}>• {ing}</div>)}
+                    <div style={{fontSize:12,color:"rgba(128,128,128,0.5)",marginTop:10,marginBottom:4,fontWeight:600,textTransform:"uppercase"}}>Steps</div>
+                    {currentRecipe.steps?.map((s,i)=><div key={i} style={{fontSize:13,color:"rgba(128,128,128,0.7)",marginBottom:6}}>{i+1}. {s}</div>)}
+                  </div>
+                  <Btn onClick={()=>{setSavedRecipes(p=>[...p,currentRecipe]);setShowRecipeModal(false);setCurrentRecipe(null);setRecipeQuery("");}}>Save Recipe</Btn>
+                </>
+              )}
+            </Modal>
+          )}
+        </>
+      )}
+
+      {subTab==="runs"&&(
+        <div>
+          <div style={{background:"rgba(128,128,128,0.05)",borderRadius:16,padding:"20px",marginBottom:16,textAlign:"center",border:"1px solid rgba(128,128,128,0.1)"}}>
+            <div style={{fontSize:40,marginBottom:8}}>🏃</div>
+            <div style={{fontSize:16,fontWeight:600,marginBottom:4,color:t.text}}>Connect Strava</div>
+            <div style={{fontSize:13,color:"rgba(128,128,128,0.5)",marginBottom:16,lineHeight:1.5}}>Link your Strava account to track runs, set goals, and stay accountable.</div>
+            <button style={{background:"rgba(252,76,2,0.15)",border:"1px solid rgba(252,76,2,0.4)",color:"#fc4c02",borderRadius:12,padding:"10px 20px",fontSize:14,fontWeight:600,cursor:"pointer"}}>Connect Strava →</button>
+          </div>
+          <div style={{background:"rgba(128,128,128,0.05)",borderRadius:16,padding:"16px"}}>
+            <div style={{fontSize:13,fontWeight:600,color:"rgba(128,128,128,0.5)",marginBottom:12,textTransform:"uppercase",letterSpacing:"0.5px"}}>Quick Log</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {[["Distance","0.0 mi"],["Duration","00:00"],["Pace","0:00/mi"],["Calories","0 kcal"]].map(([l,v])=>(
+                <div key={l} style={{background:"rgba(128,128,128,0.06)",borderRadius:12,padding:"12px"}}>
+                  <div style={{fontSize:11,color:"rgba(128,128,128,0.5)",marginBottom:4}}>{l}</div>
+                  <div style={{fontSize:18,fontWeight:700,color:t.text}}>{v}</div>
+                </div>
+              ))}
+            </div>
+            <button style={{width:"100%",marginTop:12,background:t.grad,border:"none",color:"#fff",borderRadius:12,padding:"12px",fontSize:14,fontWeight:600,cursor:"pointer"}}>Log a Run</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── AI Tab ────────────────────────────────────────────────────────────────────
+function AITab({chatHistory,setChatHistory,addEvent,addTask,setSavedRecipes,userName}){
+  const t=useTheme();
+  const [input,setInput]=useState("");
+  const [loading,setLoading]=useState(false);
+  const [listening,setListening]=useState(false);
+  const [streamText,setStreamText]=useState("");
+  const endRef=useRef(null);
+
+  useEffect(()=>{ endRef.current?.scrollIntoView({behavior:"smooth"}); },[chatHistory,streamText]);
+
+  function startListening(){
+    const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+    if(!SR){ alert("Voice not supported. Try Chrome or Safari."); return; }
+    const r=new SR(); r.continuous=false; r.interimResults=true; r.lang="en-US";
+    r.onstart=()=>setListening(true);
+    r.onend=()=>setListening(false);
+    r.onresult=(e)=>{
+      const tx=Array.from(e.results).map(r=>r[0].transcript).join("");
+      setInput(tx);
+      if(e.results[0].isFinal){ r.stop(); setTimeout(()=>sendMessage(tx),300); }
+    };
+    r.onerror=()=>setListening(false);
+    r.start();
+  }
+
+  async function sendMessage(text){
+    const msg=(text||input).trim();
+    if(!msg||loading)return;
+    setInput(""); setLoading(true); setStreamText("");
+    const userMsg={role:"user",content:msg};
+    const newHistory=[...chatHistory,userMsg];
+    setChatHistory(newHistory);
+    try{
+      let full="";
+      await callClaude(newHistory,tx=>{full=tx;setStreamText(tx);});
+      const match=full.match(/\{[\s\S]*?\}/);
+      if(match){
+        try{
+          const action=JSON.parse(match[0]);
+          if(action.action==="add_event"){
+            const dt=new Date(action.date||new Date());
+            if(action.time){ const[h,m]=action.time.split(":").map(Number); dt.setHours(h,m,0,0); }
+            addEvent({title:action.title,datetime:dt.toISOString(),category:action.category||"personal",notes:action.notes||""});
+            full+="\n\n✅ Added to your calendar!";
+          } else if(action.action==="add_task"){
+            addTask({title:action.title,due:action.due||"",priority:action.priority||"medium",category:action.category||"personal"});
+            full+="\n\n✅ Added to your tasks!";
+          } else if(action.action==="recipe"){
+            setSavedRecipes(p=>[...p,action]);
+            full+="\n\n✅ Recipe saved to Health tab!";
+          }
+        }catch{}
+      }
+      setChatHistory(p=>[...p,{role:"assistant",content:full}]);
+    }catch{
+      setChatHistory(p=>[...p,{role:"assistant",content:"Sorry, I had trouble connecting. Please try again."}]);
+    }
+    setStreamText(""); setLoading(false);
+  }
+
+  const suggestions=["Schedule a workout for tomorrow at 7am","Give me a high-protein dinner recipe","Add a task: call dentist","What should I eat before a run?","Plan my week","Remind me about hydration goals"];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",paddingTop:60}}>
+      <div style={{padding:"0 20px 16px",borderBottom:"1px solid rgba(128,128,128,0.1)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{width:40,height:40,borderRadius:"50%",background:t.grad,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,boxShadow:`0 0 20px ${t.primary}55`}}>✦</div>
+          <div>
+            <div style={{fontWeight:700,fontSize:16,color:t.text}}>ARIA</div>
+            <div style={{fontSize:12,color:"rgba(128,128,128,0.5)"}}>Your AI Life Assistant</div>
+          </div>
+        </div>
+      </div>
+      <div style={{flex:1,overflowY:"auto",padding:"16px 20px"}}>
+        {chatHistory.length===0&&(
+          <div>
+            <div style={{textAlign:"center",padding:"30px 0 20px"}}>
+              <div style={{fontSize:40,marginBottom:10}}>✦</div>
+              <div style={{fontSize:16,fontWeight:600,marginBottom:6,color:t.text}}>Hi{userName?` ${userName}`:""}! I'm ARIA</div>
+              <div style={{fontSize:13,color:"rgba(128,128,128,0.5)",lineHeight:1.6}}>I can add events, create tasks, find recipes, plan your day, and answer anything. Just talk to me!</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              {suggestions.map((s,i)=>(
+                <button key={i} onClick={()=>sendMessage(s)} style={{background:"rgba(128,128,128,0.06)",border:"1px solid rgba(128,128,128,0.1)",borderRadius:12,padding:"10px",fontSize:12,color:"rgba(128,128,128,0.7)",textAlign:"left",cursor:"pointer",lineHeight:1.4}}>{s}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {chatHistory.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",marginBottom:12}}>
+            {m.role==="assistant"&&<div style={{width:28,height:28,borderRadius:"50%",background:t.grad,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,marginRight:8,flexShrink:0,marginTop:4}}>✦</div>}
+            <div style={{maxWidth:"78%",background:m.role==="user"?t.grad:"rgba(128,128,128,0.08)",borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",padding:"10px 14px",fontSize:14,lineHeight:1.6,whiteSpace:"pre-wrap",color:m.role==="user"?"#fff":t.text}}>{m.content}</div>
+          </div>
+        ))}
+        {(loading||streamText)&&(
+          <div style={{display:"flex",justifyContent:"flex-start",marginBottom:12}}>
+            <div style={{width:28,height:28,borderRadius:"50%",background:t.grad,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,marginRight:8,flexShrink:0,marginTop:4}}>✦</div>
+            <div style={{maxWidth:"78%",background:"rgba(128,128,128,0.08)",borderRadius:"18px 18px 18px 4px",padding:"10px 14px",fontSize:14,lineHeight:1.6,color:t.text}}>
+              {streamText||<span style={{opacity:0.4}}>Thinking...</span>}
+            </div>
+          </div>
+        )}
+        <div ref={endRef}/>
+      </div>
+      <div style={{padding:"12px 16px 24px",borderTop:"1px solid rgba(128,128,128,0.1)",background:t.bg==="#f1f5f9"?"rgba(241,245,249,0.95)":"rgba(10,10,15,0.95)",backdropFilter:"blur(20px)"}}>
+        <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+          <button onClick={startListening} style={{width:44,height:44,borderRadius:"50%",background:listening?"rgba(239,68,68,0.25)":"rgba(128,128,128,0.1)",border:`2px solid ${listening?"rgba(239,68,68,0.6)":"rgba(128,128,128,0.2)"}`,color:listening?"#f87171":"rgba(128,128,128,0.6)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s"}}>🎙</button>
+          <div style={{flex:1,background:"rgba(128,128,128,0.08)",borderRadius:22,border:"1px solid rgba(128,128,128,0.15)",display:"flex",alignItems:"flex-end",minHeight:44}}>
+            <textarea value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}} placeholder="Ask ARIA anything..." rows={1} style={{flex:1,background:"none",border:"none",color:t.text,fontSize:14,padding:"11px 14px",resize:"none",outline:"none",fontFamily:"inherit",maxHeight:120,lineHeight:1.5}}/>
+          </div>
+          <button onClick={()=>sendMessage()} disabled={loading||!input.trim()} style={{width:44,height:44,borderRadius:"50%",background:loading||!input.trim()?"rgba(128,128,128,0.1)":t.grad,border:"none",color:"#fff",fontSize:18,cursor:loading||!input.trim()?"not-allowed":"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.2s",opacity:loading||!input.trim()?0.4:1}}>↑</button>
+        </div>
+        {listening&&<div style={{textAlign:"center",fontSize:12,color:"#f87171",marginTop:8,fontWeight:600}}>🎙 Listening...</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── App Root ──────────────────────────────────────────────────────────────────
+function App(){
+  const [themeName,setThemeName]=useLocalStorage("lifeos_theme","indigo");
+  const [userName,setUserName]=useLocalStorage("lifeos_name","");
+  const theme=THEMES[themeName]||THEMES.indigo;
+
+  const [tab,setTab]=useState("home");
+  const [showSettings,setShowSettings]=useState(false);
+  const [events,setEvents]=useLocalStorage("lifeos_events",[]);
+  const [tasks,setTasks]=useLocalStorage("lifeos_tasks",[]);
+  const [habits,setHabits]=useLocalStorage("lifeos_habits",[
+    {id:1,name:"Morning run",icon:"🏃",streak:0,completedDates:[]},
+    {id:2,name:"Drink 2L water",icon:"💧",streak:0,completedDates:[]},
+    {id:3,name:"Meditate",icon:"🧘",streak:0,completedDates:[]},
+    {id:4,name:"Read 20 min",icon:"📚",streak:0,completedDates:[]},
+  ]);
+  const [chatHistory,setChatHistory]=useLocalStorage("lifeos_chat",[]);
+  const [savedRecipes,setSavedRecipes]=useLocalStorage("lifeos_recipes",[]);
+  const [selectedDay,setSelectedDay]=useState(new Date());
+  const [showAddEvent,setShowAddEvent]=useState(false);
+
+  const notifSupported=typeof window!=="undefined"&&"Notification" in window;
+  const [notifPerm,setNotifPerm]=useState(()=>notifSupported?window.Notification.permission:"denied");
+  useEffect(()=>{ if(!notifSupported)return; if(window.Notification.permission==="default") window.Notification.requestPermission().then(p=>setNotifPerm(p)); },[]);
+  useEffect(()=>{
+    const iv=setInterval(()=>{
+      if(!notifSupported||notifPerm!=="granted")return;
+      const now=new Date();
+      events.forEach(ev=>{
+        if(ev.reminded)return;
+        const evTime=new Date(ev.datetime),diff=(evTime-now)/60000;
+        if(diff>0&&diff<=15){ try{new window.Notification(`⏰ ${ev.title}`,{body:`In ${Math.round(diff)} minutes`});}catch{} setEvents(prev=>prev.map(e=>e.id===ev.id?{...e,reminded:true}:e)); }
+      });
+    },60000);
+    return()=>clearInterval(iv);
+  },[events,notifPerm]);
+
+  const addEvent=ev=>setEvents(prev=>[...prev,{...ev,id:Date.now(),reminded:false}]);
+  const addTask=task=>setTasks(prev=>[...prev,{...task,id:Date.now(),done:false}]);
+  const toggleTask=id=>setTasks(prev=>prev.map(t=>t.id===id?{...t,done:!t.done}:t));
+  const toggleHabit=id=>{
+    const todayStr=new Date().toDateString();
+    setHabits(prev=>prev.map(h=>{
+      if(h.id!==id)return h;
+      const done=h.completedDates.includes(todayStr);
+      const dates=done?h.completedDates.filter(d=>d!==todayStr):[...h.completedDates,todayStr];
+      let streak=0; const d=new Date();
+      while(dates.includes(d.toDateString())){streak++;d.setDate(d.getDate()-1);}
+      return{...h,completedDates:dates,streak};
+    }));
+  };
+
+  return(
+    <ThemeCtx.Provider value={theme}>
+      <div style={{fontFamily:"'SF Pro Display',-apple-system,BlinkMacSystemFont,sans-serif",background:theme.bg,minHeight:"100vh",color:theme.text,maxWidth:430,margin:"0 auto",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"relative",zIndex:1,paddingBottom:90}}>
+          {tab==="home"&&<HomeTab events={events} tasks={tasks} habits={habits} toggleHabit={toggleHabit} toggleTask={toggleTask} setTab={setTab} setSelectedDay={setSelectedDay} userName={userName}/>}
+          {tab==="calendar"&&<CalendarTab events={events} selectedDay={selectedDay} setSelectedDay={setSelectedDay} addEvent={addEvent} showAdd={showAddEvent} setShowAdd={setShowAddEvent}/>}
+          {tab==="tasks"&&<TasksTab tasks={tasks} addTask={addTask} toggleTask={toggleTask}/>}
+          {tab==="health"&&<HealthTab habits={habits} toggleHabit={toggleHabit} savedRecipes={savedRecipes} setSavedRecipes={setSavedRecipes}/>}
+          {tab==="ai"&&<AITab chatHistory={chatHistory} setChatHistory={setChatHistory} addEvent={addEvent} addTask={addTask} setSavedRecipes={setSavedRecipes} userName={userName}/>}
+        </div>
+        <BottomNav tab={tab} setTab={setTab} onSettings={()=>setShowSettings(true)}/>
+        {showSettings&&<SettingsPanel themeName={themeName} setThemeName={setThemeName} userName={userName} setUserName={setUserName} onClose={()=>setShowSettings(false)}/>}
+      </div>
+    </ThemeCtx.Provider>
+  );
+}
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App/>);
+    // Signal that React mounted successfully
+    setTimeout(() => { window.__lifeosReady && window.__lifeosReady(); }, 100);
+
+    setTimeout(() => {
+      const el = document.getElementById('loading');
+      if(el) { el.style.opacity='0'; setTimeout(()=>el.remove(), 500); }
+    }, 1800);
+
+    // Fallback error if React never starts
+    setTimeout(() => {
+      const el = document.getElementById('loading');
+      if(el) {
+        el.innerHTML = `
+          <div style="text-align:center;padding:40px 30px;font-family:-apple-system,sans-serif;color:#fff">
+            <div style="font-size:40px;margin-bottom:16px">⚠️</div>
+            <div style="color:#f87171;font-size:18px;font-weight:700;margin-bottom:10px">Couldn't load LifeOS</div>
+            <div style="color:rgba(255,255,255,0.5);font-size:14px;line-height:1.7;margin-bottom:24px">
+              An internet connection is required to load for the first time.<br/>
+              Check your connection and tap Try Again.
+            </div>
+            <button onclick="location.reload()" style="background:linear-gradient(135deg,#6366f1,#818cf8);border:none;color:#fff;border-radius:12px;padding:13px 30px;font-size:15px;font-weight:600;cursor:pointer;display:block;margin:0 auto">
+              🔄 Try Again
+            </button>
+          </div>`;
+      }
+    }, 9000);
+</script>
+</body>
+</html>
